@@ -14,7 +14,7 @@
 #define DEFAULT_PID_FILE "/run/stationd/stationd.pid"
 #endif
 #ifndef DEFAULT_I2C_DEV
-#define DEFAULT_I2C_DEV  "/dev/i2c-0"
+#define DEFAULT_I2C_DEV  "/dev/i2c-1"
 #endif
 #ifndef MCP9808_I2C_ADDR
 #define MCP9808_I2C_ADDR 0x18
