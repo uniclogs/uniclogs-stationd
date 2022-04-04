@@ -153,15 +153,16 @@ typedef enum {
 } sec_state_t;
 
 
-struct _state_config {
+typedef struct _state_config {
 	state_t state;
 	state_t next_state;
 	sec_state_t sec_state;
 	sec_state_t next_sec_state;
 	token_t token;
 	int errorCode;
-} state_config;
+} state_config_t;
 
+extern state_config_t state_config;
 
 void handle_alarm_signal(int sig);
 void init_statemachine(void);

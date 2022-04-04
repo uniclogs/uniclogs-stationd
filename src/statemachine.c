@@ -14,6 +14,8 @@
 #include "mcp9808.h"
 #include "ads1115.h"
 
+state_config_t state_config;
+
 const char *token_str[] = {
 	"PWR_ON",
 	"OPERATE",
