@@ -5,11 +5,16 @@ Date: Aug 2022
 Station D Power management
 """
 
-import gpiozero
+from gpiozero import DigitalOutputDevice
 import socket
 import logging
 import time
 
+VHF_DOW_KEY = 17            # pin 11
+VHF_RF_PTT = 18             # pin 12
+VHF_PA_POWER = 27           # pin 13
+VHF_LNA = 22                # pin 15
+VHF_POLARIZATION = 23       # pin 16
 
 class Device:
     def __init__(self, name, power_status, temperature):
@@ -20,8 +25,14 @@ class Device:
 
 class StationD:
     def __init__(self):
-        # get status of devices on initialization
-        pass
+        # TO-DO: get status of devices on initialization
+
+        # VHF Devices
+        self.vhf_dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
+        self.vhf_rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
+        self.vhf_pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
+        self.vhf_lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
+        self.vhf_polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
     def get_system_status(self):
         # get status for all devices
@@ -58,35 +69,27 @@ class StationD:
 
                 #  VHF Band Commands
                 case ['vhf', 'dow-key', 'on']:
-                    led = gpiozero.LED(7)
-                    led.on()
-                    if gpiozero.DigitalOutputDevice(7).value != 1:
-                        gpiozero.DigitalOutputDevice(7).on()
-                    else:
-                        print('{} {} is already on.'.format(command[0], command[1]))
+                    self.vhf_dow_key.on()
                 case ['vhf', 'dow-key', 'off']:
-                    if gpiozero.DigitalOutputDevice(7).value != 0:
-                        gpiozero.DigitalOutputDevice(7).off()
-                    else:
-                        print('{} {} is already off.'.format(command[0], command[1]))
+                    self.vhf_dow_key.off()
                 case ['vhf', 'rf-ptt', 'on']:
                     #  Turn off Lna, cool down before turning on
-                    pass
+                    self.vhf_rf_ptt.on()
                 case ['vhf', 'rf-ptt', 'off']:
-                    pass
+                    self.vhf_rf_ptt.off()
                 case ['vhf', 'pa-power', 'on']:
-                    pass
+                    self.vhf_pa_power.on()
                 case ['vhf', 'pa-power', 'off']:
-                    pass
+                    self.vhf_pa_power.off()
                 case ['vhf', 'lna', 'on']:
                     #  Fail if PTT is on
-                    pass
+                    self.vhf_lna.on()
                 case ['vhf', 'lna', 'off']:
-                    pass
+                    self.vhf_lna.off()
                 case ['vhf', 'polarization', 'on']:
-                    pass
+                    self.vhf_polarization.on()
                 case ['vhf', 'polarization', 'off']:
-                    pass
+                    self.vhf_polarization.off()
 
                 #  UHF Band Commands
                 case ['uhf', 'dow-key', 'on']:
@@ -136,10 +139,14 @@ class StationD:
                     print('Invalid command')
 
 
+def main():
+    sd = StationD()
+    sd.run()
+
 if __name__ == "__main__":
     print('====================================================')
     print('Station D Power Management')
     print('====================================================')
 
-    sd = StationD()
-    sd.run()
+    main()
+
