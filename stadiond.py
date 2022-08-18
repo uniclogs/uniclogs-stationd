@@ -58,9 +58,15 @@ class StationD:
 
                 #  VHF Band Commands
                 case ['vhf', 'dow-key', 'on']:
-                    pass
+                    if gpiozero.DigitalOutputDevice(7).value != 1:
+                        gpiozero.DigitalOutputDevice(7).on()
+                    else:
+                        print('{} {} is already on.'.format(command[0], command[1]))
                 case ['vhf', 'dow-key', 'off']:
-                    pass
+                    if gpiozero.DigitalOutputDevice(7).value != 0:
+                        gpiozero.DigitalOutputDevice(7).off()
+                    else:
+                        print('{} {} is already off.'.format(command[0], command[1]))
                 case ['vhf', 'rf-ptt', 'on']:
                     #  Turn off Lna, cool down before turning on
                     pass
