@@ -58,6 +58,8 @@ class StationD:
 
                 #  VHF Band Commands
                 case ['vhf', 'dow-key', 'on']:
+                    led = gpiozero.LED(7)
+                    led.on()
                     if gpiozero.DigitalOutputDevice(7).value != 1:
                         gpiozero.DigitalOutputDevice(7).on()
                     else:
