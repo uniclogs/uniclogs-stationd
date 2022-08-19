@@ -16,18 +16,18 @@ VHF_PA_POWER = 27           # pin 13
 VHF_LNA = 22                # pin 15
 VHF_POLARIZATION = 23       # pin 16
 
-UHF_DOW_KEY = 0
-UHF_RF_PTT = 0
-UHF_PA_POWER = 0
-UHF_LNA = 0
-UHF_POLARIZATION = 0
-
-L_BAND_RF_PTT = 0
-L_BAND_PA_POWER = 0
-
-S_BAND_POWER = 0
-
-OTHER_CONTROL = 0
+# UHF_DOW_KEY = 0
+# UHF_RF_PTT = 0
+# UHF_PA_POWER = 0
+# UHF_LNA = 0
+# UHF_POLARIZATION = 0
+#
+# L_BAND_RF_PTT = 0
+# L_BAND_PA_POWER = 0
+#
+# S_BAND_POWER = 0
+#
+# OTHER_CONTROL = 0
 
 ON = 1
 OFF = 0
@@ -51,22 +51,22 @@ class StationD:
         self.vhf_lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
         self.vhf_polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
-        # UHF Devices
-        self.uhf_dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
-        self.uhf_rf_ptt = DigitalOutputDevice(UHF_RF_PTT, initial_value=False)
-        self.uhf_pa_power = DigitalOutputDevice(UHF_PA_POWER, initial_value=False)
-        self.uhf_lna = DigitalOutputDevice(UHF_LNA, initial_value=False)
-        self.uhf_polarization = DigitalOutputDevice(UHF_POLARIZATION, initial_value=False)
-
-        # L-Band Devices
-        self.l_band_rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
-        self.l_band_pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
-
-        # S-Band Devices
-        self.s_band_power = DigitalOutputDevice(S_BAND_POWER, initial_value=False)
-
-        # Other Devices
-        self.other_control = DigitalOutputDevice(OTHER_CONTROL, initial_value=False)
+        # # UHF Devices
+        # self.uhf_dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
+        # self.uhf_rf_ptt = DigitalOutputDevice(UHF_RF_PTT, initial_value=False)
+        # self.uhf_pa_power = DigitalOutputDevice(UHF_PA_POWER, initial_value=False)
+        # self.uhf_lna = DigitalOutputDevice(UHF_LNA, initial_value=False)
+        # self.uhf_polarization = DigitalOutputDevice(UHF_POLARIZATION, initial_value=False)
+        #
+        # # L-Band Devices
+        # self.l_band_rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
+        # self.l_band_pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
+        #
+        # # S-Band Devices
+        # self.s_band_power = DigitalOutputDevice(S_BAND_POWER, initial_value=False)
+        #
+        # # Other Devices
+        # self.other_control = DigitalOutputDevice(OTHER_CONTROL, initial_value=False)
 
     def get_system_status(self):
         # get status for all devices
@@ -87,6 +87,7 @@ class StationD:
             #  Get plain-language commands from the user
             command = input('command: ').split()
 
+            #  TO-DO: Break out on/off logic to generic methods
             match command:
                 #  VHF Band Commands
                 case ['vhf', 'dow-key', 'on']:
