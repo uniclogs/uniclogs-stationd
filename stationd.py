@@ -117,19 +117,19 @@ class StationD:
                     else:
                         print('{} {} is already off'.format(command[0], command[1]))
                 case ['vhf', 'pa-power', 'on']:
-                    if self.vhf_pa_power != ON:
+                    if self.vhf_pa_power.value != ON:
                         self.vhf_pa_power.on()
                     else:
                         print('{} {} is already on'.format(command[0], command[1]))
                 case ['vhf', 'pa-power', 'off']:
-                    if self.vhf_pa_power != OFF:
+                    if self.vhf_pa_power.value != OFF:
                         self.vhf_pa_power.off()
                     else:
                         print('{} {} is already off'.format(command[0], command[1]))
                 case ['vhf', 'lna', 'on']:
                     #  Fail if PTT is on
-                    if self.vhf_lna != ON:
-                        if self.vhf_rf_ptt != OFF:
+                    if self.vhf_lna.value != ON:
+                        if self.vhf_rf_ptt.value != OFF:
                             print('The LNA cannot be turned on while PTT is on for this band.')
                         else:
                             self.vhf_lna.on()
@@ -146,7 +146,7 @@ class StationD:
                     else:
                         print('{} {} is already on'.format(command[0], command[1]))
                 case ['vhf', 'polarization', 'off']:
-                    if self.vhf_polarization != OFF:
+                    if self.vhf_polarization.value != OFF:
                         self.vhf_polarization.off()
                     else:
                         print('{} {} is already off'.format(command[0], command[1]))
