@@ -131,8 +131,8 @@ class StationD:
                     if self.vhf_lna != ON:
                         if self.vhf_rf_ptt != OFF:
                             print('The LNA cannot be turned on while PTT is on for this band.')
-                            break
-                        self.vhf_lna.on()
+                        else:
+                            self.vhf_lna.on()
                     else:
                         print('{} {} is already on'.format(command[0], command[1]))
                 case ['vhf', 'lna', 'off']:
