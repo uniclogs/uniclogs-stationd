@@ -95,15 +95,10 @@ class StationD:
             return False
 
     def calculate_ptt_off_time(self, band):
-        print('in diff calc')
-        print(band)
         now = datetime.now()
-        print (now)
         if band == 'vhf':
             vhf_diff = now - self.vhf_ptt_off_time
             vhf_diff_sec = vhf_diff.total_seconds()
-            print(vhf_diff)
-            print(vhf_diff_sec)
             return vhf_diff_sec
         elif band == 'uhf':
             uhf_diff = now - self.uhf_ptt_off_time
@@ -138,7 +133,6 @@ class StationD:
                     self.vhf_rf_ptt.off()
                     #  set time ptt turned off
                     self.vhf_ptt_off_time = datetime.now()
-                    print(self.vhf_ptt_off_time)
                 else:
                     self.no_change(command)
             case ['vhf', 'pa-power', 'on']:
@@ -158,7 +152,7 @@ class StationD:
                         if diff_sec > PTT_COOLDOWN:
                             self.vhf_pa_power.off()
                         else:
-                            print('Please wait {} seconds and try again.'.format(PTT_COOLDOWN - diff_sec))
+                            print('Please wait {} seconds and try again.'.format(round(PTT_COOLDOWN - diff_sec)))
                 else:
                     self.no_change(command)
             case ['vhf', 'lna', 'on']:
