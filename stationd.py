@@ -189,6 +189,8 @@ class StationD:
                         self.vhf_polarization.off()
                 else:
                     self.no_change(command)
+            case _:
+                print('Invalid command')
 
     def uhf_command(self, command):
         match command:
@@ -211,6 +213,8 @@ class StationD:
             case ['uhf', 'polarization', 'on']:
                 pass
             case ['uhf', 'polarization', 'off']:
+                pass
+            case _:
                 pass
 
     def l_band_command(self, command):
@@ -235,15 +239,23 @@ class StationD:
                     self.l_band_pa_power.off()
                 else:
                     self.no_change(command)
+            case _:
+                print('Invalid command')
 
     def s_band_command(self, command):
         match command:
             case ['s-band', 'power', 'on']:
                 if self.s_band_power.value != ON:
-                    self.l_band_pa_power.on()
+                    self.s_band_power.on()
+                else:
+                    self.no_change(command)
             case ['s-band', 'power', 'off']:
                 if self.s_band_power.value != OFF:
                     self.s_band_power.off()
+                else:
+                    self.no_change(command)
+            case _:
+                print('Invalid command')
 
     def other_control_command(self, command):
         match command:
@@ -257,6 +269,8 @@ class StationD:
                     self.other_control.off()
                 else:
                     self.no_change(command)
+            case _:
+                print('Invalid command')
 
     def command_prompt(self):
         while True:
@@ -273,6 +287,8 @@ class StationD:
                 self.l_band_command(command)
             elif band == 's-band':
                 self.s_band_command(command)
+            elif band == 'other':
+                self.other_control_command(command)
             else:
                 match command:
                     #  Non-band commands
