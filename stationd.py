@@ -54,10 +54,7 @@ class Device:
     @staticmethod
     def molly_guard(command):
         answer = input('Are you sure you want to turn {} {} for {}? y/n: '.format(command[1], command[2], command[0]))
-        if answer.lower() == 'y':
-            return True
-        else:
-            return False
+        True if answer.lower() == 'y' else False
 
     @staticmethod
     def no_change(command):
@@ -72,7 +69,7 @@ class Device:
         return diff_sec
 
     def dow_key_on(self, command):
-        self.dow_key.on if self.dow_key.value != ON else self.no_change(command)
+        self.dow_key.on() if self.dow_key.value != ON else self.no_change(command)
 
     def dow_key_off(self, command):
         self.dow_key.off() if self.dow_key.value != OFF else self.no_change(command)
@@ -160,59 +157,57 @@ class Device:
 
 
 class VHF(Device):
-    def __int__(self):
+    def __init__(self):
         self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
         self.rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
         self.lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
         self.polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
+        self.ptt_off_time = datetime.now()
+
 
 class UHF(Device):
-    def __int__(self):
+    def __init__(self):
         # self.dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
         # self.rf_ptt = DigitalOutputDevice(UHF_RF_PTT, initial_value=False)
         # self.pa_power = DigitalOutputDevice(UHF_PA_POWER, initial_value=False)
         # self.lna = DigitalOutputDevice(UHF_LNA, initial_value=False)
         # self.polarization = DigitalOutputDevice(UHF_POLARIZATION, initial_value=False)
+
+        # self.ptt_time_off = datetime.now()
         pass
 
 
 class L_Band(Device):
-    def __int__(self):
+    def __init__(self):
         self.rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
 
 class S_Band(Device):
-    def __int__(self):
+    def __init__(self):
         self.rx_swap = DigitalOutputDevice(S_BAND_RX_SWAP, initial_value=False)
 
     def rx_swap_on(self, command):
-        if self.rx_swap.value != ON:
-            self.rx_swap.on()
-        else:
-            self.no_change(command)
+        self.rx_swap.on() if self.rx_swap.value != ON else self.no_change(command)
 
     def rx_swap_off(self, command):
-        if self.rx_swap.value != OFF:
-            self.rx_swap.off()
-        else:
-            self.no_change(command)
+        self.rx_swap.off() if self.rx_swap.value != OFF else self.no_change(command)
 
 
 class SDR_Rock(Device):
-    def __int__(self):
+    def __init__(self):
         self.power = DigitalOutputDevice(SDR_ROCK_POWER, initial_value=False)
 
 
 class Lime_SDR(Device):
-    def __int__(self):
+    def __init__(self):
         self.power = DigitalOutputDevice(LIME_SDR_POWER, initial_value=False)
 
 
 class Rotator(Device):
-    def __int__(self):
+    def __init__(self):
         self.power = DigitalOutputDevice(ROTATOR_POWER, initial_value=False)
 
 
