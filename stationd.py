@@ -250,7 +250,7 @@ class StationD:
                 # VHF Commands
                 case ['vhf', 'dow-key', 'on']:
                     self.vhf.dow_key_on(command)
-                case ['vhf', 'dow-key', 'on']:
+                case ['vhf', 'dow-key', 'off']:
                     self.vhf.dow_key_off(command)
                 case ['vhf', 'rf-ptt', 'on']:
                     self.vhf.rf_ptt_on(command)
@@ -271,7 +271,7 @@ class StationD:
                 # UHF Commands
                 case ['uhf', 'dow-key', 'on']:
                     self.uhf.dow_key_on(command)
-                case ['uhf', 'dow-key', 'on']:
+                case ['uhf', 'dow-key', 'off']:
                     self.uhf.dow_key_off(command)
                 case ['uhf', 'rf-ptt', 'on']:
                     self.uhf.rf_ptt_on(command)
