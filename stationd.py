@@ -64,6 +64,7 @@ class Device:
         print('{} is already {} for {}.'.format(command[1], command[2], command[0]))
 
     def calculate_ptt_off_time(self):
+        # TO-DO: Overflow guard?
         now = datetime.now()
         diff = now - self.ptt_off_time
         diff_sec = diff.total_seconds()
@@ -71,16 +72,10 @@ class Device:
         return diff_sec
 
     def dow_key_on(self, command):
-        if self.dow_key.value != ON:
-            self.dow_key.on()
-        else:
-            self.no_change(command)
+        self.dow_key.on if self.dow_key.value != ON else self.no_change(command)
 
     def dow_key_off(self, command):
-        if self.dow_key.value != OFF:
-            self.dow_key.off()
-        else:
-            self.no_change(command)
+        self.dow_key.off() if self.dow_key.value != OFF else self.no_change(command)
 
     def rf_ptt_on(self, command):
         if self.rf_ptt.value != ON:
@@ -133,10 +128,7 @@ class Device:
             self.no_change(command)
 
     def lna_off(self, command):
-        if self.lna.value != OFF:
-            self.lna.off()
-        else:
-            self.no_change(command)
+        self.lna.off() if self.lna.value != OFF else self.no_change(command)
 
     def polarization_on(self, command):
         if self.polarization.value != ON:
@@ -161,16 +153,10 @@ class Device:
             self.no_change(command)
 
     def power_on(self, command):
-        if self.power.value != ON:
-            self.power.on()
-        else:
-            self.no_change(command)
+        self.power.on() if self.power.value != ON else self.no_change(command)
 
     def power_off(self, command):
-        if self.power.value != OFF:
-            self.power.off()
-        else:
-            self.no_change(command)
+        self.power.off() if self.power.value != OFF else self.no_change(command)
 
 
 class VHF(Device):
