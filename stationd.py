@@ -54,7 +54,10 @@ class Device:
     @staticmethod
     def molly_guard(command):
         answer = input('Are you sure you want to turn {} {} for {}? y/n: '.format(command[1], command[2], command[0]))
-        True if answer.lower() == 'y' else False
+        if answer.lower() == 'y':
+            return True
+        else:
+            return False
 
     @staticmethod
     def no_change(command):
@@ -158,6 +161,7 @@ class Device:
 
 class VHF(Device):
     def __init__(self):
+        super().__init__()
         self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
         self.rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
@@ -169,6 +173,7 @@ class VHF(Device):
 
 class UHF(Device):
     def __init__(self):
+        super().__init__()
         # self.dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
         # self.rf_ptt = DigitalOutputDevice(UHF_RF_PTT, initial_value=False)
         # self.pa_power = DigitalOutputDevice(UHF_PA_POWER, initial_value=False)
@@ -176,17 +181,18 @@ class UHF(Device):
         # self.polarization = DigitalOutputDevice(UHF_POLARIZATION, initial_value=False)
 
         # self.ptt_time_off = datetime.now()
-        pass
 
 
 class L_Band(Device):
     def __init__(self):
+        super().__init__()
         self.rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
 
 class S_Band(Device):
     def __init__(self):
+        super().__init__()
         self.rx_swap = DigitalOutputDevice(S_BAND_RX_SWAP, initial_value=False)
 
     def rx_swap_on(self, command):
@@ -198,16 +204,19 @@ class S_Band(Device):
 
 class SDR_Rock(Device):
     def __init__(self):
+        super().__init__()
         self.power = DigitalOutputDevice(SDR_ROCK_POWER, initial_value=False)
 
 
 class Lime_SDR(Device):
     def __init__(self):
+        super().__init__()
         self.power = DigitalOutputDevice(LIME_SDR_POWER, initial_value=False)
 
 
 class Rotator(Device):
     def __init__(self):
+        super().__init__()
         self.power = DigitalOutputDevice(ROTATOR_POWER, initial_value=False)
 
 
