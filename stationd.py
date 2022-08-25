@@ -144,7 +144,7 @@ class Device:
     def polarization_off(self, command):
         if self.polarization.value != OFF:
             #  Check ptt off for at least 100ms
-            if self.rf_ptt != OFF:
+            if self.rf_ptt.value != OFF:
                 print('Cannot change polarization while rf-ptt is on.')
             else:
                 time.sleep(0.1)
@@ -180,7 +180,7 @@ class UHF(Device):
         # self.lna = DigitalOutputDevice(UHF_LNA, initial_value=False)
         # self.polarization = DigitalOutputDevice(UHF_POLARIZATION, initial_value=False)
 
-        # self.ptt_time_off = datetime.now()
+        self.ptt_time_off = datetime.now()
 
 
 class L_Band(Device):
