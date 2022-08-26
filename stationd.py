@@ -40,10 +40,6 @@ LEFT = 1
 RIGHT = 0
 
 
-def no_change(command):
-    print('{} is already {} for {}.'.format(command[1], command[2], command[0]))
-
-
 class Amplifier:
     def __init__(self):
         self.dow_key = None
@@ -71,24 +67,42 @@ class Amplifier:
         return diff_sec
 
     def dow_key_on(self, command):
-        self.dow_key.on() if self.dow_key.value != ON else no_change(command)
+        if self.rf_ptt.value == ON:
+            print('dow-key state cannot be changed while PTT is on')
+            return
+
+        if self.dow_key.value != ON:
+            self.dow_key.on()
+            print('dow-key has been turned on for {}'.format(command[0]))
 
     def dow_key_off(self, command):
-        self.dow_key.off() if self.dow_key.value != OFF else no_change(command)
+        if self.rf_ptt.value == ON:
+            print('dow-key state cannot be changed while PTT is on')
+            return
+
+        if self.dow_key.value != OFF:
+            self.dow_key.off()
+            print('dow-key has been turned off for {}'.format(command[0]))
 
     def rf_ptt_on(self, command):
+        if self.pa_power.value != ON:
+            print('pa-power must be on in order to use PTT')
+            return
+
         if self.rf_ptt.value != ON:
             #  Turn off Lna, cool down before turning on ptt
             if self.lna.value != OFF:
                 self.lna.off()
                 time.sleep(0.1)
             self.rf_ptt.on()
+            success(command)
         else:
             no_change(command)
 
     def rf_ptt_off(self, command):
         if self.rf_ptt.value != OFF:
             self.rf_ptt.off()
+            success(command)
             #  set time ptt turned off
             self.ptt_off_time = datetime.now()
         else:
@@ -99,6 +113,7 @@ class Amplifier:
             #  Double-check the user wants to turn pa-power on
             if self.molly_guard(command):
                 self.pa_power.on()
+                success(command)
                 self.dow_key_on(command)
         else:
             no_change(command)
@@ -112,6 +127,7 @@ class Amplifier:
                 diff_sec = self.calculate_ptt_off_time()
                 if diff_sec > PTT_COOLDOWN:
                     self.pa_power.off()
+                    success(command)
                     self.dow_key_off(command)
                 else:
                     print('Please wait {} seconds and try again.'.format(round(PTT_COOLDOWN - diff_sec)))
@@ -121,35 +137,43 @@ class Amplifier:
     def lna_on(self, command):
         if self.lna.value != ON:
             #  Fail if PTT is on
-            if self.rf_ptt.value != OFF:
+            if self.rf_ptt.value == ON:
                 print('The LNA cannot be turned on while PTT is on for this band.')
+                return
             else:
                 self.lna.on()
+                success(command)
         else:
             no_change(command)
 
     def lna_off(self, command):
-        self.lna.off() if self.lna.value != OFF else no_change(command)
+        if self.lna.value != OFF:
+            self.lna.off()
+            success(command)
+        else:
+            no_change(command)
 
-    def polarization_on(self, command):
-        if self.polarization.value != ON:
+    def polarization_left(self, command):
+        if self.polarization.value != LEFT:
             #  Check ptt off for at least 100ms
             if self.rf_ptt.value != OFF:
                 print('Cannot change polarization while rf-ptt is on.')
             else:
                 time.sleep(0.1)
                 self.polarization.on()
+                print('Polarization for {} has successfully been set to {}'.format(command[0], command[2]))
         else:
             no_change(command)
 
-    def polarization_off(self, command):
-        if self.polarization.value != OFF:
+    def polarization_right(self, command):
+        if self.polarization.value != RIGHT:
             #  Check ptt off for at least 100ms
             if self.rf_ptt.value != OFF:
                 print('Cannot change polarization while rf-ptt is on.')
             else:
                 time.sleep(0.1)
                 self.polarization.off()
+                print('Polarization for {} has successfully been set to {}'.format(command[0], command[2]))
         else:
             no_change(command)
 
@@ -192,10 +216,18 @@ class Accessory:
         self.power = None
 
     def power_on(self, command):
-        self.power.on() if self.power.value != ON else no_change(command)
+        if self.power.value != ON:
+            self.power.on()
+            success(command)
+        else:
+            no_change(command)
 
     def power_off(self, command):
-        self.power.off() if self.power.value != OFF else no_change(command)
+        if self.power.value != OFF:
+            self.power.off()
+            success(command)
+        else:
+            no_change(command)
 
 
 class RX_Swap(Accessory):
@@ -233,6 +265,8 @@ class StationD:
         self.sdr_lime = SDR_Lime()
         self.rotator = Rotator()
 
+        self.ptt_engaged = False
+
     def command_prompt(self):
         while True:
             #  Get plain-language commands from the user
@@ -252,10 +286,10 @@ class StationD:
                     self.vhf.lna_on(command)
                 case ['vhf', 'lna', 'off']:
                     self.vhf.lna_off(command)
-                case ['vhf', 'polarization', 'on']:
-                    self.vhf.polarization_on(command)
-                case ['vhf', 'polarization', 'off']:
-                    self.vhf.polarization_off(command)
+                case ['vhf', 'polarization', 'left']:
+                    self.vhf.polarization_left(command)
+                case ['vhf', 'polarization', 'right']:
+                    self.vhf.polarization_right(command)
                 # UHF Commands
                 case ['uhf', 'rf-ptt', 'on']:
                     self.uhf.rf_ptt_on(command)
@@ -269,10 +303,10 @@ class StationD:
                     self.uhf.lna_on(command)
                 case ['uhf', 'lna', 'off']:
                     self.uhf.lna_off(command)
-                case ['uhf', 'polarization', 'on']:
-                    self.uhf.polarization_on(command)
-                case ['uhf', 'polarization', 'off']:
-                    self.uhf.polarization_off(command)
+                case ['uhf', 'polarization', 'left']:
+                    self.uhf.polarization_left(command)
+                case ['uhf', 'polarization', 'right']:
+                    self.uhf.polarization_right(command)
                 # L-Band Commands
                 case ['l-band', 'rf-ptt', 'on']:
                     self.l_band.rf_ptt_on(command)
@@ -304,6 +338,14 @@ class StationD:
                     break
                 case _:
                     print('Invalid command')
+
+
+def success(command):
+    print('{} has successfully been turned {} for {}'.format(command[1], command[2], command[0]))
+
+
+def no_change(command):
+    print('{} is already {} for {}.'.format(command[1], command[2], command[0]))
 
 
 def main():
