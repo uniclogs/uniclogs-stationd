@@ -26,20 +26,26 @@ VHF_POLARIZATION = 23       # pin 16
 L_BAND_RF_PTT = 24          # pin 18
 L_BAND_PA_POWER = 25        # pin 22
 
-S_BAND_RX_SWAP = 11         # pin 23
+RX_SWAP_POWER = 11          # pin 23
 
-SDR_ROCK_POWER = 8          # pin 24
-LIME_SDR_POWER = 2          # pin 29
+SBC_SATNOGS_POWER = 8       # pin 24
+SDR_LIME_POWER = 2          # pin 29
 ROTATOR_POWER = 6           # pin 31
 
 ON = 1
 OFF = 0
 PTT_COOLDOWN = 120          # In seconds
 
+LEFT = 1
+RIGHT = 0
 
-class Device:
+
+def no_change(command):
+    print('{} is already {} for {}.'.format(command[1], command[2], command[0]))
+
+
+class Amplifier:
     def __init__(self):
-        # VHF, UHF, L-Band
         self.dow_key = None
         self.rf_ptt = None
         self.pa_power = None
@@ -48,9 +54,6 @@ class Device:
 
         self.ptt_off_time = None
 
-        # Other Control
-        self.power = None
-
     @staticmethod
     def molly_guard(command):
         answer = input('Are you sure you want to turn {} {} for {}? y/n: '.format(command[1], command[2], command[0]))
@@ -58,10 +61,6 @@ class Device:
             return True
         else:
             return False
-
-    @staticmethod
-    def no_change(command):
-        print('{} is already {} for {}.'.format(command[1], command[2], command[0]))
 
     def calculate_ptt_off_time(self):
         # TO-DO: Overflow guard?
@@ -72,10 +71,10 @@ class Device:
         return diff_sec
 
     def dow_key_on(self, command):
-        self.dow_key.on() if self.dow_key.value != ON else self.no_change(command)
+        self.dow_key.on() if self.dow_key.value != ON else no_change(command)
 
     def dow_key_off(self, command):
-        self.dow_key.off() if self.dow_key.value != OFF else self.no_change(command)
+        self.dow_key.off() if self.dow_key.value != OFF else no_change(command)
 
     def rf_ptt_on(self, command):
         if self.rf_ptt.value != ON:
@@ -85,7 +84,7 @@ class Device:
                 time.sleep(0.1)
             self.rf_ptt.on()
         else:
-            self.no_change(command)
+            no_change(command)
 
     def rf_ptt_off(self, command):
         if self.rf_ptt.value != OFF:
@@ -93,15 +92,16 @@ class Device:
             #  set time ptt turned off
             self.ptt_off_time = datetime.now()
         else:
-            self.no_change(command)
+            no_change(command)
 
     def pa_power_on(self, command):
         if self.pa_power.value != ON:
             #  Double-check the user wants to turn pa-power on
             if self.molly_guard(command):
                 self.pa_power.on()
+                self.dow_key_on(command)
         else:
-            self.no_change(command)
+            no_change(command)
 
     def pa_power_off(self, command):
         if self.pa_power.value != OFF:
@@ -112,10 +112,11 @@ class Device:
                 diff_sec = self.calculate_ptt_off_time()
                 if diff_sec > PTT_COOLDOWN:
                     self.pa_power.off()
+                    self.dow_key_off(command)
                 else:
                     print('Please wait {} seconds and try again.'.format(round(PTT_COOLDOWN - diff_sec)))
         else:
-            self.no_change(command)
+            no_change(command)
 
     def lna_on(self, command):
         if self.lna.value != ON:
@@ -125,10 +126,10 @@ class Device:
             else:
                 self.lna.on()
         else:
-            self.no_change(command)
+            no_change(command)
 
     def lna_off(self, command):
-        self.lna.off() if self.lna.value != OFF else self.no_change(command)
+        self.lna.off() if self.lna.value != OFF else no_change(command)
 
     def polarization_on(self, command):
         if self.polarization.value != ON:
@@ -139,7 +140,7 @@ class Device:
                 time.sleep(0.1)
                 self.polarization.on()
         else:
-            self.no_change(command)
+            no_change(command)
 
     def polarization_off(self, command):
         if self.polarization.value != OFF:
@@ -150,16 +151,10 @@ class Device:
                 time.sleep(0.1)
                 self.polarization.off()
         else:
-            self.no_change(command)
-
-    def power_on(self, command):
-        self.power.on() if self.power.value != ON else self.no_change(command)
-
-    def power_off(self, command):
-        self.power.off() if self.power.value != OFF else self.no_change(command)
+            no_change(command)
 
 
-class VHF(Device):
+class VHF(Amplifier):
     def __init__(self):
         super().__init__()
         self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
@@ -171,7 +166,7 @@ class VHF(Device):
         self.ptt_off_time = datetime.now()
 
 
-class UHF(Device):
+class UHF(Amplifier):
     def __init__(self):
         super().__init__()
         # self.dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
@@ -183,38 +178,45 @@ class UHF(Device):
         self.ptt_time_off = datetime.now()
 
 
-class L_Band(Device):
+class L_Band(Amplifier):
     def __init__(self):
         super().__init__()
         self.rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
+        self.ptt_off_time = datetime.now()
 
-class S_Band(Device):
+
+class Accessory:
+    def __int__(self):
+        self.power = None
+
+    def power_on(self, command):
+        self.power.on() if self.power.value != ON else no_change(command)
+
+    def power_off(self, command):
+        self.power.off() if self.power.value != OFF else no_change(command)
+
+
+class RX_Swap(Accessory):
     def __init__(self):
         super().__init__()
-        self.rx_swap = DigitalOutputDevice(S_BAND_RX_SWAP, initial_value=False)
-
-    def rx_swap_on(self, command):
-        self.rx_swap.on() if self.rx_swap.value != ON else self.no_change(command)
-
-    def rx_swap_off(self, command):
-        self.rx_swap.off() if self.rx_swap.value != OFF else self.no_change(command)
+        self.power = DigitalOutputDevice(RX_SWAP_POWER, initial_value=False)
 
 
-class SDR_Rock(Device):
+class SBC_Satnogs(Accessory):
     def __init__(self):
         super().__init__()
-        self.power = DigitalOutputDevice(SDR_ROCK_POWER, initial_value=False)
+        self.power = DigitalOutputDevice(SBC_SATNOGS_POWER, initial_value=False)
 
 
-class Lime_SDR(Device):
+class SDR_Lime(Accessory):
     def __init__(self):
         super().__init__()
-        self.power = DigitalOutputDevice(LIME_SDR_POWER, initial_value=False)
+        self.power = DigitalOutputDevice(SDR_LIME_POWER, initial_value=False)
 
 
-class Rotator(Device):
+class Rotator(Accessory):
     def __init__(self):
         super().__init__()
         self.power = DigitalOutputDevice(ROTATOR_POWER, initial_value=False)
@@ -226,9 +228,9 @@ class StationD:
         self.vhf = VHF()
         self.uhf = UHF()
         self.l_band = L_Band()
-        self.s_band = S_Band()
-        self.sdr_rock = SDR_Rock()
-        self.lime_sdr = Lime_SDR()
+        self.rx_swap = RX_Swap()
+        self.sdr_rock = SBC_Satnogs()
+        self.sdr_lime = SDR_Lime()
         self.rotator = Rotator()
 
     def command_prompt(self):
@@ -238,10 +240,6 @@ class StationD:
 
             match command:
                 # VHF Commands
-                case ['vhf', 'dow-key', 'on']:
-                    self.vhf.dow_key_on(command)
-                case ['vhf', 'dow-key', 'off']:
-                    self.vhf.dow_key_off(command)
                 case ['vhf', 'rf-ptt', 'on']:
                     self.vhf.rf_ptt_on(command)
                 case ['vhf', 'rf-ptt', 'off']:
@@ -259,10 +257,6 @@ class StationD:
                 case ['vhf', 'polarization', 'off']:
                     self.vhf.polarization_off(command)
                 # UHF Commands
-                case ['uhf', 'dow-key', 'on']:
-                    self.uhf.dow_key_on(command)
-                case ['uhf', 'dow-key', 'off']:
-                    self.uhf.dow_key_off(command)
                 case ['uhf', 'rf-ptt', 'on']:
                     self.uhf.rf_ptt_on(command)
                 case ['uhf', 'rf-ptt', 'off']:
@@ -290,18 +284,18 @@ class StationD:
                     self.l_band.pa_power_off(command)
                 # S-Band Commands
                 case ['s-band', 'rx-swap', 'on']:
-                    self.s_band.rx_swap_on(command)
+                    self.rx_swap.power_on(command)
                 case ['s-band', 'rx-swap', 'off']:
-                    self.s_band.rx_swap_off(command)
+                    self.rx_swap.power_off(command)
                 # Other Control
                 case ['sdr-rock', 'power', 'on']:
                     self.sdr_rock.power_on(command)
                 case ['sdr-rock', 'power', 'off']:
                     self.sdr_rock.power_off(command)
-                case ['lime-sdr', 'power', 'on']:
-                    self.lime_sdr.power_on(command)
-                case ['lime-sdr', 'power', 'off']:
-                    self.lime_sdr.power_off(command)
+                case ['sdr-lime', 'power', 'on']:
+                    self.sdr_lime.power_on(command)
+                case ['sdr-lime', 'power', 'off']:
+                    self.sdr_lime.power_off(command)
                 case ['rotator', 'power', 'on']:
                     self.rotator.power_on(command)
                 case ['rotator', 'power', 'off']:
@@ -319,7 +313,7 @@ def main():
 
 if __name__ == "__main__":
     print('====================================================')
-    print('Station D Power Management')
+    print('Station Daemon Power Management')
     print('====================================================')
 
     main()
