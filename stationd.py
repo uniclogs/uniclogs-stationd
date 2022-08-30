@@ -10,7 +10,6 @@ import socket
 import logging
 from datetime import datetime
 import time
-import colorama
 from colorama import Fore
 
 VHF_DOW_KEY = 17            # pin 11
@@ -54,7 +53,8 @@ class Amplifier:
 
     @staticmethod
     def molly_guard(command):
-        answer = input('Are you sure you want to turn {} {} for {}? y/n: '.format(command[1], command[2], command[0]))
+        answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n:'
+                       + Fore.RESET + ' '.format(command[1], command[2], command[0]))
         if answer.lower() == 'y':
             return True
         else:
@@ -97,18 +97,24 @@ class Amplifier:
                 self.lna.off()
                 time.sleep(0.1)
             self.rf_ptt.on()
+            ptt_flag = True
             success(command)
         else:
             no_change(command)
 
+        return ptt_flag
+
     def rf_ptt_off(self, command, ptt_flag):
         if self.rf_ptt.value != OFF:
             self.rf_ptt.off()
+            ptt_flag = False
             success(command)
             #  set time ptt turned off
             self.ptt_off_time = datetime.now()
         else:
             no_change(command)
+
+        return ptt_flag
 
     def pa_power_on(self, command):
         if self.pa_power.value != ON:
@@ -159,7 +165,7 @@ class Amplifier:
         if self.polarization.value != LEFT:
             #  Check ptt off for at least 100ms
             if self.rf_ptt.value != OFF:
-                print(Fore.Red + 'Cannot change polarization while rf-ptt is on.')
+                print(Fore.RED + 'Cannot change polarization while rf-ptt is on.')
             else:
                 time.sleep(0.1)
                 self.polarization.on()
@@ -179,9 +185,6 @@ class Amplifier:
         else:
             no_change(command)
 
-    def command_parser(self, command, ptt_flag):
-        pass
-
 
 class VHF(Amplifier):
     def __init__(self):
@@ -193,6 +196,27 @@ class VHF(Amplifier):
         self.polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
         self.ptt_off_time = datetime.now()
+
+    def command_parser(self, command, ptt_flag):
+        match command:
+            case['vhf', 'rf-ptt', 'on']:
+                ptt_flag = self.rf_ptt_on(command, ptt_flag)
+            case['vhf', 'rf-ptt', 'off']:
+                ptt_flag = self.rf_ptt_off(command, ptt_flag)
+            case['vhf', 'pa-power', 'on']:
+                self.pa_power_on(command)
+            case['vhf', 'pa-power', 'off']:
+                self.pa_power_off(command)
+            case['vhf', 'lna', 'on']:
+                self.lna_on(command)
+            case['vhf', 'lna', 'off']:
+                self.lna_off(command)
+            case['vhf', 'polarization', 'left']:
+                self.polarization_left(command)
+            case['vhf', 'polarization', 'right']:
+                self.polarization_right(command)
+
+        return ptt_flag
 
 
 class UHF(Amplifier):
@@ -206,6 +230,27 @@ class UHF(Amplifier):
 
         self.ptt_time_off = datetime.now()
 
+    def command_parser(self, command, ptt_flag):
+        match command:
+            case['uhf', 'rf-ptt', 'on']:
+                ptt_flag = self.rf_ptt_on(command, ptt_flag)
+            case['uhf', 'rf-ptt', 'off']:
+                ptt_flag = self.rf_ptt_off(command, ptt_flag)
+            case['uhf', 'pa-power', 'on']:
+                self.pa_power_on(command)
+            case['uhf', 'pa-power', 'off']:
+                self.pa_power_off(command)
+            case['uhf', 'lna', 'on']:
+                self.lna_on(command)
+            case['uhf', 'lna', 'off']:
+                self.lna_off(command)
+            case['uhf', 'polarization', 'left']:
+                self.polarization_left(command)
+            case['uhf', 'polarization', 'right']:
+                self.polarization_right(command)
+
+        return ptt_flag
+
 
 class L_Band(Amplifier):
     def __init__(self):
@@ -214,6 +259,19 @@ class L_Band(Amplifier):
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
         self.ptt_off_time = datetime.now()
+
+    def command_parser(self, command, ptt_flag):
+        match command:
+            case['l-band', 'rf-ptt', 'on']:
+                ptt_flag = self.rf_ptt_on(command, ptt_flag)
+            case['l-band', 'rf-ptt', 'off']:
+                ptt_flag = self.rf_ptt_off(command, ptt_flag)
+            case['l-band', 'pa-power', 'on']:
+                self.pa_power_on(command)
+            case['l-band', 'pa-power', 'off']:
+                self.pa_power_off(command)
+
+        return ptt_flag
 
 
 class Accessory:
@@ -234,15 +292,22 @@ class Accessory:
         else:
             no_change(command)
 
-    def command_parser(self, command, ptt_flag):
-
-        pass
-
 
 class RX_Swap(Accessory):
     def __init__(self):
         super().__init__()
         self.power = DigitalOutputDevice(RX_SWAP_POWER, initial_value=False)
+
+    def command_parser(self, command, ptt_flag):
+        if ptt_flag is True:
+            print(Fore.RED + 'rx-swap cannot happen while PTT is active')
+            return
+
+        match command:
+            case['rx-swap', 'power', 'on']:
+                self.power_on(command)
+            case['rx-swap', 'power', 'off']:
+                self.power_off(command)
 
 
 class SBC_Satnogs(Accessory):
@@ -250,11 +315,25 @@ class SBC_Satnogs(Accessory):
         super().__init__()
         self.power = DigitalOutputDevice(SBC_SATNOGS_POWER, initial_value=False)
 
+    def command_parser(self, command):
+        match command:
+            case['sbc-satnogs', 'power', 'on']:
+                self.power_on(command)
+            case['sbd-satnogs', 'power', 'off']:
+                self.power_off(command)
+
 
 class SDR_Lime(Accessory):
     def __init__(self):
         super().__init__()
         self.power = DigitalOutputDevice(SDR_LIME_POWER, initial_value=False)
+
+    def command_parser(self, command):
+        match command:
+            case['sdr-lime', 'power', 'on']:
+                self.power_on(command)
+            case['sdr-lime', 'power', 'off']:
+                self.power_off(command)
 
 
 class Rotator(Accessory):
@@ -262,18 +341,30 @@ class Rotator(Accessory):
         super().__init__()
         self.power = DigitalOutputDevice(ROTATOR_POWER, initial_value=False)
 
+    def command_parser(self, command):
+        match command:
+            case['rotator', 'power', 'on']:
+                self.power_on(command)
+            case['rotator', 'power', 'off']:
+                self.power_off(command)
+
 
 class StationD:
     def __init__(self):
         # TO-DO: get status of devices on initialization
+
+        # Amplifiers
         self.vhf = VHF()
         self.uhf = UHF()
         self.l_band = L_Band()
+
+        # Accessories
         self.rx_swap = RX_Swap()
-        self.sdr_rock = SBC_Satnogs()
+        self.sbc_satnogs = SBC_Satnogs()
         self.sdr_lime = SDR_Lime()
         self.rotator = Rotator()
 
+        # PTT on/off
         self.ptt_flag = False
 
     def command_prompt(self):
@@ -282,74 +373,26 @@ class StationD:
             command = input(Fore.BLUE + 'command:' + Fore.RESET + ' ').split()
             device = command[0]
 
-            print(self.ptt_flag)
-
-            match command:
-                # VHF Commands
-                case ['vhf', 'rf-ptt', 'on']:
-                    self.vhf.rf_ptt_on(command, self.ptt_flag)
-                case ['vhf', 'rf-ptt', 'off']:
-                    self.vhf.rf_ptt_off(command, self.ptt_flag)
-                case ['vhf', 'pa-power', 'on']:
-                    self.vhf.pa_power_on(command)
-                case ['vhf', 'pa-power', 'off']:
-                    self.vhf.pa_power_off(command)
-                case ['vhf', 'lna', 'on']:
-                    self.vhf.lna_on(command)
-                case ['vhf', 'lna', 'off']:
-                    self.vhf.lna_off(command)
-                case ['vhf', 'polarization', 'left']:
-                    self.vhf.polarization_left(command)
-                case ['vhf', 'polarization', 'right']:
-                    self.vhf.polarization_right(command)
-                # UHF Commands
-                case ['uhf', 'rf-ptt', 'on']:
-                    self.uhf.rf_ptt_on(command, self.ptt_flag)
-                case ['uhf', 'rf-ptt', 'off']:
-                    self.uhf.rf_ptt_off(command, self.ptt_flag)
-                case ['uhf', 'pa-power', 'on']:
-                    self.uhf.pa_power_on(command)
-                case ['uhf', 'pa-power', 'off']:
-                    self.uhf.pa_power_off(command)
-                case ['uhf', 'lna', 'on']:
-                    self.uhf.lna_on(command)
-                case ['uhf', 'lna', 'off']:
-                    self.uhf.lna_off(command)
-                case ['uhf', 'polarization', 'left']:
-                    self.uhf.polarization_left(command)
-                case ['uhf', 'polarization', 'right']:
-                    self.uhf.polarization_right(command)
-                # L-Band Commands
-                case ['l-band', 'rf-ptt', 'on']:
-                    self.l_band.rf_ptt_on(command, self.ptt_flag)
-                case ['l-band', 'rf-ptt', 'off']:
-                    self.l_band.rf_ptt_off(command, self.ptt_flag)
-                case ['l-band', 'pa-power', 'on']:
-                    self.l_band.pa_power_on(command)
-                case ['l-band', 'pa-power', 'off']:
-                    self.l_band.pa_power_off(command)
-                # S-Band Commands
-                case ['s-band', 'rx-swap', 'on']:
-                    self.rx_swap.power_on(command)
-                case ['s-band', 'rx-swap', 'off']:
-                    self.rx_swap.power_off(command)
-                # Other Control
-                case ['sdr-rock', 'power', 'on']:
-                    self.sdr_rock.power_on(command)
-                case ['sdr-rock', 'power', 'off']:
-                    self.sdr_rock.power_off(command)
-                case ['sdr-lime', 'power', 'on']:
-                    self.sdr_lime.power_on(command)
-                case ['sdr-lime', 'power', 'off']:
-                    self.sdr_lime.power_off(command)
-                case ['rotator', 'power', 'on']:
-                    self.rotator.power_on(command)
-                case ['rotator', 'power', 'off']:
-                    self.rotator.power_off(command)
-                case['exit']:
-                    break
-                case _:
-                    print(Fore.Red + 'Invalid command')
+            if device == 'vhf':
+                self.ptt_flag = self.vhf.command_parser(command, self.ptt_flag)
+            elif device == 'uhf':
+                self.ptt_flag = self.uhf.command_parser(command, self.ptt_flag)
+            elif device == 'l-band':
+                self.ptt_flag = self.l_band.command_parser(command, self.ptt_flag)
+            elif device == 'rx-swap':
+                self.rx_swap.command_parser(command, self.ptt_flag)
+            elif device == 'sbc-satnogs':
+                self.sbc_satnogs.command_parser(command)
+            elif device == 'sdr-lime':
+                self.sdr_lime.command_parser(command)
+            elif device == 'rotator':
+                self.rotator.command_parser(command)
+            else:
+                match command:
+                    case['exit']:
+                        break
+                    case _:
+                        print(Fore.RED + 'Invalid command')
 
 
 def success(command):
