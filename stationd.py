@@ -279,8 +279,7 @@ class StationD:
     def command_prompt(self):
         while True:
             #  Get plain-language commands from the user
-            print(Fore.BLUE + 'command: ')
-            command = input().split()
+            command = input(Fore.BLUE + 'command:' + Fore.RESET + ' ').split()
             device = command[0]
 
             print(self.ptt_flag)
