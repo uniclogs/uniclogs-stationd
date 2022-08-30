@@ -1,3 +1,7 @@
+/venv/
+/.idea/
+.DS_Store
+
 # http://www.gnu.org/software/automake
 
 Makefile.in

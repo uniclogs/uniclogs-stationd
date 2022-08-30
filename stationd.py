@@ -10,6 +10,8 @@ import socket
 import logging
 from datetime import datetime
 import time
+import colorama
+from colorama import Fore
 
 VHF_DOW_KEY = 17            # pin 11
 VHF_RF_PTT = 18             # pin 12
@@ -84,7 +86,7 @@ class Amplifier:
             self.dow_key.off()
             print('dow-key has been turned off for {}'.format(command[0]))
 
-    def rf_ptt_on(self, command):
+    def rf_ptt_on(self, command, ptt_flag):
         if self.pa_power.value != ON:
             print('pa-power must be on in order to use PTT')
             return
@@ -99,7 +101,7 @@ class Amplifier:
         else:
             no_change(command)
 
-    def rf_ptt_off(self, command):
+    def rf_ptt_off(self, command, ptt_flag):
         if self.rf_ptt.value != OFF:
             self.rf_ptt.off()
             success(command)
@@ -177,6 +179,9 @@ class Amplifier:
         else:
             no_change(command)
 
+    def command_parser(self, command, ptt_flag):
+        pass
+
 
 class VHF(Amplifier):
     def __init__(self):
@@ -229,6 +234,10 @@ class Accessory:
         else:
             no_change(command)
 
+    def command_parser(self, command, ptt_flag):
+
+        pass
+
 
 class RX_Swap(Accessory):
     def __init__(self):
@@ -265,19 +274,22 @@ class StationD:
         self.sdr_lime = SDR_Lime()
         self.rotator = Rotator()
 
-        self.ptt_engaged = False
+        self.ptt_flag = False
 
     def command_prompt(self):
         while True:
             #  Get plain-language commands from the user
-            command = input('command: ').split()
+            command = input(Fore.BLUE + 'command: ').split()
+            device = command[0]
+
+            print(self.ptt_flag)
 
             match command:
                 # VHF Commands
                 case ['vhf', 'rf-ptt', 'on']:
-                    self.vhf.rf_ptt_on(command)
+                    self.vhf.rf_ptt_on(command, self.ptt_flag)
                 case ['vhf', 'rf-ptt', 'off']:
-                    self.vhf.rf_ptt_off(command)
+                    self.vhf.rf_ptt_off(command, self.ptt_flag)
                 case ['vhf', 'pa-power', 'on']:
                     self.vhf.pa_power_on(command)
                 case ['vhf', 'pa-power', 'off']:
@@ -292,9 +304,9 @@ class StationD:
                     self.vhf.polarization_right(command)
                 # UHF Commands
                 case ['uhf', 'rf-ptt', 'on']:
-                    self.uhf.rf_ptt_on(command)
+                    self.uhf.rf_ptt_on(command, self.ptt_flag)
                 case ['uhf', 'rf-ptt', 'off']:
-                    self.uhf.rf_ptt_off(command)
+                    self.uhf.rf_ptt_off(command, self.ptt_flag)
                 case ['uhf', 'pa-power', 'on']:
                     self.uhf.pa_power_on(command)
                 case ['uhf', 'pa-power', 'off']:
@@ -309,9 +321,9 @@ class StationD:
                     self.uhf.polarization_right(command)
                 # L-Band Commands
                 case ['l-band', 'rf-ptt', 'on']:
-                    self.l_band.rf_ptt_on(command)
+                    self.l_band.rf_ptt_on(command, self.ptt_flag)
                 case ['l-band', 'rf-ptt', 'off']:
-                    self.l_band.rf_ptt_off(command)
+                    self.l_band.rf_ptt_off(command, self.ptt_flag)
                 case ['l-band', 'pa-power', 'on']:
                     self.l_band.pa_power_on(command)
                 case ['l-band', 'pa-power', 'off']:
