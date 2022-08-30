@@ -70,25 +70,25 @@ class Amplifier:
 
     def dow_key_on(self, command):
         if self.rf_ptt.value == ON:
-            print('dow-key state cannot be changed while PTT is on')
+            print(Fore.RED + 'dow-key state cannot be changed while PTT is on')
             return
 
         if self.dow_key.value != ON:
             self.dow_key.on()
-            print('dow-key has been turned on for {}'.format(command[0]))
+            print(Fore.GREEN + 'dow-key has been turned on for {}'.format(command[0]))
 
     def dow_key_off(self, command):
         if self.rf_ptt.value == ON:
-            print('dow-key state cannot be changed while PTT is on')
+            print(Fore.RED + 'dow-key state cannot be changed while PTT is on')
             return
 
         if self.dow_key.value != OFF:
             self.dow_key.off()
-            print('dow-key has been turned off for {}'.format(command[0]))
+            print(Fore.GREEN + 'dow-key has been turned off for {}'.format(command[0]))
 
     def rf_ptt_on(self, command, ptt_flag):
         if self.pa_power.value != ON:
-            print('pa-power must be on in order to use PTT')
+            print(Fore.RED + 'pa-power must be on in order to use PTT')
             return
 
         if self.rf_ptt.value != ON:
@@ -124,7 +124,7 @@ class Amplifier:
         if self.pa_power.value != OFF:
             #  Check PTT off for at least 2 minutes
             if self.rf_ptt.value != OFF:
-                print('Cannot turn off pa-power while PTT is on.')
+                print(Fore.RED + 'Cannot turn off pa-power while PTT is on.')
             else:
                 diff_sec = self.calculate_ptt_off_time()
                 if diff_sec > PTT_COOLDOWN:
@@ -132,7 +132,7 @@ class Amplifier:
                     success(command)
                     self.dow_key_off(command)
                 else:
-                    print('Please wait {} seconds and try again.'.format(round(PTT_COOLDOWN - diff_sec)))
+                    print(Fore.RED + 'Please wait {} seconds and try again.'.format(round(PTT_COOLDOWN - diff_sec)))
         else:
             no_change(command)
 
@@ -140,7 +140,7 @@ class Amplifier:
         if self.lna.value != ON:
             #  Fail if PTT is on
             if self.rf_ptt.value == ON:
-                print('The LNA cannot be turned on while PTT is on for this band.')
+                print(Fore.RED + 'The LNA cannot be turned on while PTT is on for this band.')
                 return
             else:
                 self.lna.on()
@@ -159,11 +159,11 @@ class Amplifier:
         if self.polarization.value != LEFT:
             #  Check ptt off for at least 100ms
             if self.rf_ptt.value != OFF:
-                print('Cannot change polarization while rf-ptt is on.')
+                print(Fore.Red + 'Cannot change polarization while rf-ptt is on.')
             else:
                 time.sleep(0.1)
                 self.polarization.on()
-                print('Polarization for {} has successfully been set to {}'.format(command[0], command[2]))
+                print(Fore.GREEN + 'Polarization for {} has successfully been set to {}'.format(command[0], command[2]))
         else:
             no_change(command)
 
@@ -171,11 +171,11 @@ class Amplifier:
         if self.polarization.value != RIGHT:
             #  Check ptt off for at least 100ms
             if self.rf_ptt.value != OFF:
-                print('Cannot change polarization while rf-ptt is on.')
+                print(Fore.RED + 'Cannot change polarization while rf-ptt is on.')
             else:
                 time.sleep(0.1)
                 self.polarization.off()
-                print('Polarization for {} has successfully been set to {}'.format(command[0], command[2]))
+                print(Fore.GREEN + 'Polarization for {} has successfully been set to {}'.format(command[0], command[2]))
         else:
             no_change(command)
 
@@ -279,7 +279,8 @@ class StationD:
     def command_prompt(self):
         while True:
             #  Get plain-language commands from the user
-            command = input(Fore.BLUE + 'command: ').split()
+            print(Fore.BLUE + 'command: ')
+            command = input().split()
             device = command[0]
 
             print(self.ptt_flag)
@@ -349,15 +350,15 @@ class StationD:
                 case['exit']:
                     break
                 case _:
-                    print('Invalid command')
+                    print(Fore.Red + 'Invalid command')
 
 
 def success(command):
-    print('{} has successfully been turned {} for {}'.format(command[1], command[2], command[0]))
+    print(Fore.GREEN + '{} has successfully been turned {} for {}'.format(command[1], command[2], command[0]))
 
 
 def no_change(command):
-    print('{} is already {} for {}.'.format(command[1], command[2], command[0]))
+    print(Fore.YELLOW + '{} is already {} for {}.'.format(command[1], command[2], command[0]))
 
 
 def main():
