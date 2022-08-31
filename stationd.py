@@ -12,6 +12,9 @@ from datetime import datetime
 import time
 from colorama import Fore
 
+UDP_IP = '127.0.0.1'
+UDP_PORT = 5005
+
 VHF_DOW_KEY = 17            # pin 11
 VHF_RF_PTT = 18             # pin 12
 VHF_PA_POWER = 27           # pin 13
@@ -151,7 +154,7 @@ class Amplifier:
         if self.lna.value != ON:
             # Require inverse lna and dow-key states
             if self.dow_key.value == ON:
-                self.dow_key_off()
+                self.dow_key_off(command)
 
             self.lna.on()
             success(command)
@@ -164,7 +167,7 @@ class Amplifier:
             success(command)
             # If dow-key turned off for LNA, turn it back on
             if self.pa_power.value == ON and self.dow_key.value == OFF:
-                self.dow_key_on()
+                self.dow_key_on(command)
         else:
             no_change(command)
 
@@ -374,10 +377,15 @@ class StationD:
         # PTT on/off
         self.ptt_flag = False
 
-    def command_prompt(self):
+    def command_listener(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((UDP_IP, UDP_PORT))
+
         while True:
             #  Get plain-language commands from the user
-            command = input(Fore.BLUE + 'command: ' + Fore.RESET).split()
+            # command = input(Fore.BLUE + 'command: ' + Fore.RESET).split()
+            data, addr = sock.recvfrom(1024)
+            command = data.decode().strip('\n').split()
             device = command[0]
 
             match device:
@@ -413,7 +421,7 @@ def no_change(command):
 
 def main():
     sd = StationD()
-    sd.command_prompt()
+    sd.command_listener()
 
 
 if __name__ == "__main__":
