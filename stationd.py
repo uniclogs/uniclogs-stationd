@@ -53,8 +53,8 @@ class Amplifier:
 
     @staticmethod
     def molly_guard(command):
-        answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n:'
-                       + Fore.RESET + ' '.format(command[1], command[2], command[0]))
+        answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n: '
+                       + Fore.RESET.format(command[1], command[2], command[0]))
         if answer.lower() == 'y':
             return True
         else:
@@ -143,14 +143,18 @@ class Amplifier:
             no_change(command)
 
     def lna_on(self, command):
+        #  Fail if PTT is on
+        if self.rf_ptt.value == ON:
+            print(Fore.RED + 'The LNA cannot be turned on while PTT is on for this band.')
+            return
+
         if self.lna.value != ON:
-            #  Fail if PTT is on
-            if self.rf_ptt.value == ON:
-                print(Fore.RED + 'The LNA cannot be turned on while PTT is on for this band.')
-                return
-            else:
-                self.lna.on()
-                success(command)
+            # Require inverse lna and dow-key states
+            if self.dow_key.value == ON:
+                self.dow_key_off()
+
+            self.lna.on()
+            success(command)
         else:
             no_change(command)
 
@@ -158,6 +162,9 @@ class Amplifier:
         if self.lna.value != OFF:
             self.lna.off()
             success(command)
+            # If dow-key turned off for LNA, turn it back on
+            if self.pa_power.value == ON and self.dow_key.value == OFF:
+                self.dow_key_on()
         else:
             no_change(command)
 
@@ -370,29 +377,30 @@ class StationD:
     def command_prompt(self):
         while True:
             #  Get plain-language commands from the user
-            command = input(Fore.BLUE + 'command:' + Fore.RESET + ' ').split()
+            command = input(Fore.BLUE + 'command: ' + Fore.RESET).split()
             device = command[0]
 
-            if device == 'vhf':
-                self.ptt_flag = self.vhf.command_parser(command, self.ptt_flag)
-            elif device == 'uhf':
-                self.ptt_flag = self.uhf.command_parser(command, self.ptt_flag)
-            elif device == 'l-band':
-                self.ptt_flag = self.l_band.command_parser(command, self.ptt_flag)
-            elif device == 'rx-swap':
-                self.rx_swap.command_parser(command, self.ptt_flag)
-            elif device == 'sbc-satnogs':
-                self.sbc_satnogs.command_parser(command)
-            elif device == 'sdr-lime':
-                self.sdr_lime.command_parser(command)
-            elif device == 'rotator':
-                self.rotator.command_parser(command)
-            else:
-                match command:
-                    case['exit']:
-                        break
-                    case _:
-                        print(Fore.RED + 'Invalid command')
+            match device:
+                case 'vhf':
+                    self.ptt_flag = self.vhf.command_parser(command, self.ptt_flag)
+                case 'uhf':
+                    self.ptt_flag = self.uhf.command_parser(command, self.ptt_flag)
+                case 'l-band':
+                    self.ptt_flag = self.l_band.command_parser(command, self.ptt_flag)
+                case 'rx-swap':
+                    self.rx_swap.command_parser(command, self.ptt_flag)
+                case 'sbc-satnogs':
+                    self.sbc_satnogs.command_parser(command)
+                case 'sdr-lime':
+                    self.sdr_lime.command_parser(command)
+                case 'rotator':
+                    self.rotator.command_parser(command)
+                case _:
+                    match command:
+                        case['exit']:
+                            break
+                        case _:
+                            print(Fore.RED + 'Invalid command')
 
 
 def success(command):
