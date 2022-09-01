@@ -64,7 +64,7 @@ class Amplifier:
         try:
             while True:
                 sock.settimeout(20)
-                data, addr = sock.recvfrom(1024)
+                data, _ = sock.recvfrom(1024)
                 guard = data.decode().strip('\n').strip('\r').split()
                 if guard == command:
                     sock.settimeout(None)
@@ -74,6 +74,7 @@ class Amplifier:
                     return False
         except socket.timeout:
             print(Fore.RED + 'Command has timed out')
+            sock.settimeout(None)
             return False
 
     def calculate_ptt_off_time(self):
@@ -400,8 +401,6 @@ class StationD:
 
     def command_listener(self):
         while True:
-            #  Get plain-language commands from the user
-            # command = input(Fore.BLUE + 'command: ' + Fore.RESET).split()
             data, _ = self.sock.recvfrom(1024)
             command = data.decode().strip('\n').strip('\r').split()
             device = command[0]
@@ -443,8 +442,8 @@ def main():
 
 
 if __name__ == "__main__":
-    print('====================================================')
+    print('===============================')
     print('Station Daemon Power Management')
-    print('====================================================')
+    print('===============================')
 
     main()
