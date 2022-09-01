@@ -2,7 +2,7 @@
 Author: Steven Borrego
 Date: Aug 2022
 
-Station D Power management
+StationD Power management
 """
 
 from gpiozero import DigitalOutputDevice
@@ -12,9 +12,11 @@ from datetime import datetime
 import time
 from colorama import Fore
 
+# UDP
 UDP_IP = '127.0.0.1'
 UDP_PORT = 5005
 
+# GPIO Pins
 VHF_DOW_KEY = 17            # pin 11
 VHF_RF_PTT = 18             # pin 12
 VHF_PA_POWER = 27           # pin 13
@@ -54,13 +56,33 @@ class Amplifier:
 
         self.ptt_off_time = None
 
+    # @staticmethod
+    # def molly_guard(command):
+    #     # answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n: '
+    #     #                + Fore.RESET.format(command[1], command[2], command[0]))
+    #     print('Please re-enter the command if you would like to continue turning {} {} for {}'\
+    #           .format(command[1], command[2], command[3]))
+
     @staticmethod
-    def molly_guard(command):
-        answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n: '
-                       + Fore.RESET.format(command[1], command[2], command[0]))
-        if answer.lower() == 'y':
-            return True
-        else:
+    def molly_guard(command, sock):
+        # answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n: '
+        #                + Fore.RESET.format(command[1], command[2], command[0]))
+        print(Fore.YELLOW + 'Please re-enter the command if you would like to continue turning {} {} for {}'
+              .format(command[1], command[2], command[0]))
+
+        try:
+            while True:
+                sock.settimeout(20)
+                data, addr = sock.recvfrom(1024)
+                guard = data.decode().strip('\n').strip('\r').split()
+                if guard == command:
+                    sock.settimeout(None)
+                    return True
+                else:
+                    sock.settimeout(None)
+                    return False
+        except socket.timeout:
+            print(Fore.RED + 'Command has timed out')
             return False
 
     def calculate_ptt_off_time(self):
@@ -121,18 +143,20 @@ class Amplifier:
 
     def pa_power_on(self, command):
         if self.pa_power.value != ON:
-            #  Double-check the user wants to turn pa-power on
-            if self.molly_guard(command):
-                self.pa_power.on()
-                success(command)
-                self.dow_key_on(command)
+            self.pa_power.on()
+            success(command)
+            self.dow_key_on(command)
         else:
             no_change(command)
 
     def pa_power_off(self, command):
         if self.pa_power.value != OFF:
             #  Check PTT off for at least 2 minutes
-            if self.rf_ptt.value != OFF:
+            if self.ptt_off_time is None:
+                self.pa_power.off()
+                success(command)
+                self.dow_key_off(command)
+            elif self.rf_ptt.value == ON:
                 print(Fore.RED + 'Cannot turn off pa-power while PTT is on.')
             else:
                 diff_sec = self.calculate_ptt_off_time()
@@ -205,16 +229,17 @@ class VHF(Amplifier):
         self.lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
         self.polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
-        self.ptt_off_time = datetime.now()
+        self.ptt_off_time = None
 
-    def command_parser(self, command, ptt_flag):
+    def command_parser(self, command, ptt_flag, sock):
         match command:
             case['vhf', 'rf-ptt', 'on']:
                 ptt_flag = self.rf_ptt_on(command, ptt_flag)
             case['vhf', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command, ptt_flag)
             case['vhf', 'pa-power', 'on']:
-                self.pa_power_on(command)
+                if self.molly_guard(command, sock):
+                    self.pa_power_on(command)
             case['vhf', 'pa-power', 'off']:
                 self.pa_power_off(command)
             case['vhf', 'lna', 'on']:
@@ -238,16 +263,17 @@ class UHF(Amplifier):
         # self.lna = DigitalOutputDevice(UHF_LNA, initial_value=False)
         # self.polarization = DigitalOutputDevice(UHF_POLARIZATION, initial_value=False)
 
-        self.ptt_time_off = datetime.now()
+        self.ptt_time_off = None
 
-    def command_parser(self, command, ptt_flag):
+    def command_parser(self, command, ptt_flag, sock):
         match command:
             case['uhf', 'rf-ptt', 'on']:
                 ptt_flag = self.rf_ptt_on(command, ptt_flag)
             case['uhf', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command, ptt_flag)
             case['uhf', 'pa-power', 'on']:
-                self.pa_power_on(command)
+                if self.molly_guard(command, sock):
+                    self.pa_power_on(command)
             case['uhf', 'pa-power', 'off']:
                 self.pa_power_off(command)
             case['uhf', 'lna', 'on']:
@@ -268,7 +294,7 @@ class L_Band(Amplifier):
         self.rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
-        self.ptt_off_time = datetime.now()
+        self.ptt_off_time = None
 
     def command_parser(self, command, ptt_flag):
         match command:
@@ -329,7 +355,7 @@ class SBC_Satnogs(Accessory):
         match command:
             case['sbc-satnogs', 'power', 'on']:
                 self.power_on(command)
-            case['sbd-satnogs', 'power', 'off']:
+            case['sbc-satnogs', 'power', 'off']:
                 self.power_off(command)
 
 
@@ -377,22 +403,23 @@ class StationD:
         # PTT on/off
         self.ptt_flag = False
 
-    def command_listener(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((UDP_IP, UDP_PORT))
+        # UDP Socket
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((UDP_IP, UDP_PORT))
 
+    def command_listener(self):
         while True:
             #  Get plain-language commands from the user
             # command = input(Fore.BLUE + 'command: ' + Fore.RESET).split()
-            data, addr = sock.recvfrom(1024)
-            command = data.decode().strip('\n').split()
+            data, _ = self.sock.recvfrom(1024)
+            command = data.decode().strip('\n').strip('\r').split()
             device = command[0]
 
             match device:
                 case 'vhf':
-                    self.ptt_flag = self.vhf.command_parser(command, self.ptt_flag)
+                    self.ptt_flag = self.vhf.command_parser(command, self.ptt_flag, self.sock)
                 case 'uhf':
-                    self.ptt_flag = self.uhf.command_parser(command, self.ptt_flag)
+                    self.ptt_flag = self.uhf.command_parser(command, self.ptt_flag, self.sock)
                 case 'l-band':
                     self.ptt_flag = self.l_band.command_parser(command, self.ptt_flag)
                 case 'rx-swap':
