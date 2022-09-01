@@ -56,20 +56,11 @@ class Amplifier:
 
         self.ptt_off_time = None
 
-    # @staticmethod
-    # def molly_guard(command):
-    #     # answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n: '
-    #     #                + Fore.RESET.format(command[1], command[2], command[0]))
-    #     print('Please re-enter the command if you would like to continue turning {} {} for {}'\
-    #           .format(command[1], command[2], command[3]))
-
     @staticmethod
     def molly_guard(command, sock):
-        # answer = input(Fore.YELLOW + 'Are you sure you want to turn {} {} for {}? y/n: '
-        #                + Fore.RESET.format(command[1], command[2], command[0]))
         print(Fore.YELLOW + 'Please re-enter the command if you would like to continue turning {} {} for {}'
               .format(command[1], command[2], command[0]))
-
+        # Get confirmation from user, timeout after 20 seconds
         try:
             while True:
                 sock.settimeout(20)
@@ -90,7 +81,6 @@ class Amplifier:
         now = datetime.now()
         diff = now - self.ptt_off_time
         diff_sec = diff.total_seconds()
-
         return diff_sec
 
     def dow_key_on(self, command):
@@ -296,14 +286,15 @@ class L_Band(Amplifier):
 
         self.ptt_off_time = None
 
-    def command_parser(self, command, ptt_flag):
+    def command_parser(self, command, ptt_flag, sock):
         match command:
             case['l-band', 'rf-ptt', 'on']:
                 ptt_flag = self.rf_ptt_on(command, ptt_flag)
             case['l-band', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command, ptt_flag)
             case['l-band', 'pa-power', 'on']:
-                self.pa_power_on(command)
+                if self.molly_guard(command, sock):
+                    self.pa_power_on(command)
             case['l-band', 'pa-power', 'off']:
                 self.pa_power_off(command)
 
@@ -421,7 +412,7 @@ class StationD:
                 case 'uhf':
                     self.ptt_flag = self.uhf.command_parser(command, self.ptt_flag, self.sock)
                 case 'l-band':
-                    self.ptt_flag = self.l_band.command_parser(command, self.ptt_flag)
+                    self.ptt_flag = self.l_band.command_parser(command, self.ptt_flag, self.sock)
                 case 'rx-swap':
                     self.rx_swap.command_parser(command, self.ptt_flag)
                 case 'sbc-satnogs':
