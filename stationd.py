@@ -50,6 +50,7 @@ RIGHT = 0
 class Amplifier:
     def __init__(self, sock):
         self.name = None
+
         self.dow_key = None
         self.rf_ptt = None
         self.pa_power = None
@@ -130,6 +131,7 @@ class Amplifier:
         return diff_sec
 
     def dow_key_on(self, command, addr):
+        # Fail if PTT is on
         if self.rf_ptt.value == ON:
             print(Fore.RED + 'dow-key state cannot be changed while PTT is on')
             message = 'dow-key state cannot be changed while PTT is on\n'
@@ -138,10 +140,10 @@ class Amplifier:
 
         if self.dow_key.value != ON:
             self.dow_key.on()
-            print(Fore.GREEN + 'dow-key has been turned on for {}'.format(command[0]))
             success(command, self.sock, addr)
 
     def dow_key_off(self, command, addr):
+        # Fail if PTT is on
         if self.rf_ptt.value == ON:
             print(Fore.RED + 'dow-key state cannot be changed while PTT is on')
             message = 'dow-key state cannot be changed while PTT is on\n'
@@ -150,7 +152,6 @@ class Amplifier:
 
         if self.dow_key.value != OFF:
             self.dow_key.off()
-            print(Fore.GREEN + 'dow-key has been turned off for {}'.format(command[0]))
             success(command, self.sock, addr)
 
     def rf_ptt_on(self, command, addr, ptt_flag):
@@ -278,6 +279,7 @@ class VHF(Amplifier):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'VHF'
+
         self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
         self.rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
@@ -313,6 +315,7 @@ class UHF(Amplifier):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'UHF'
+
         # self.dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
         # self.rf_ptt = DigitalOutputDevice(UHF_RF_PTT, initial_value=False)
         # self.pa_power = DigitalOutputDevice(UHF_PA_POWER, initial_value=False)
@@ -348,6 +351,7 @@ class L_Band(Amplifier):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'L-Band'
+
         self.rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
@@ -369,7 +373,9 @@ class L_Band(Amplifier):
 class Accessory:
     def __init__(self, sock):
         self.name = None
+
         self.power = None
+
         self.sock = sock
 
     def status(self, addr):
@@ -404,11 +410,14 @@ class RX_Swap(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'RX-Swap'
+
         self.power = DigitalOutputDevice(RX_SWAP_POWER, initial_value=False)
 
     def command_parser(self, command, addr, ptt_flag):
         if ptt_flag is True:
             print(Fore.RED + 'rx-swap cannot happen while PTT is active')
+            message = 'rx-swap cannot happen while PTT is active\n'
+            self.sock.sendto(message.encode(), addr)
             return
 
         match command:
@@ -424,6 +433,7 @@ class SBC_Satnogs(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'SBC-Satnogs'
+
         self.power = DigitalOutputDevice(SBC_SATNOGS_POWER, initial_value=False)
 
     def command_parser(self, command, addr):
@@ -440,6 +450,7 @@ class SDR_Lime(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'SDR-Lime'
+
         self.power = DigitalOutputDevice(SDR_LIME_POWER, initial_value=False)
 
     def command_parser(self, command, addr):
@@ -456,6 +467,7 @@ class Rotator(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
         self.name = 'Rotator'
+
         self.power = DigitalOutputDevice(ROTATOR_POWER, initial_value=False)
 
     def command_parser(self, command, addr):
@@ -489,6 +501,8 @@ class StationD:
 
         # PTT on/off
         self.ptt_flag = False
+
+        # logging.basicConfig(filename='activity.log', encoding='utf-8', level=logging.DEBUG)
 
     def command_listener(self):
         while True:
@@ -531,14 +545,22 @@ class StationD:
 
 
 def success(command, sock, addr):
-    print(Fore.GREEN + '{} has successfully been turned {} for {}'.format(command[1], command[2], command[0]))
-    message = '{} has successfully been turned {} for {}\n'.format(command[1], command[2], command[0])
+    device = command[0]
+    component = command[1]
+    state = command[2]
+
+    print(Fore.GREEN + '{} has successfully been turned {} for {}'.format(component, state, device))
+    message = '{} has successfully been turned {} for {}\n'.format(component, state, device)
     sock.sendto(message.encode(), addr)
 
 
 def no_change(command, sock, addr):
-    print(Fore.YELLOW + '{} is already {} for {}.'.format(command[1], command[2], command[0]))
-    message = '{} is already {} for {}\n'.format(command[1], command[2], command[0])
+    device = command[0]
+    component = command[1]
+    state = command[2]
+
+    print(Fore.YELLOW + '{} is already {} for {}.'.format(component, state, device))
+    message = '{} is already {} for {}\n'.format(component, state, device)
     sock.sendto(message.encode(), addr)
 
 
