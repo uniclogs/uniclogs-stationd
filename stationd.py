@@ -49,6 +49,7 @@ RIGHT = 0
 
 class Amplifier:
     def __init__(self, sock):
+        self.name = None
         self.dow_key = None
         self.rf_ptt = None
         self.pa_power = None
@@ -87,11 +88,13 @@ class Amplifier:
         else:
             status .append('N/A')
 
-        message = 'Dow-Key: {}\n' \
+        message = 'Device: {}\n' \
+                  'Dow-Key: {}\n' \
+                  'Pa-Power: {}\n' \
                   'RF-PTT: {}\n' \
                   'LNA: {}\n' \
-                  'Polarization: {}\n' \
-                  .format(status[0], status[1], status[2], status[3], status[4])
+                  'Polarization: {}\n\n' \
+                  .format(self.name, status[0], status[1], status[2], status[3], status[4])
         self.sock.sendto(message.encode(), addr)
 
     def molly_guard(self, command, addr):
@@ -274,6 +277,7 @@ class Amplifier:
 class VHF(Amplifier):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'VHF'
         self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
         self.rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
@@ -308,6 +312,7 @@ class VHF(Amplifier):
 class UHF(Amplifier):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'UHF'
         # self.dow_key = DigitalOutputDevice(UHF_DOW_KEY, initial_value=False)
         # self.rf_ptt = DigitalOutputDevice(UHF_RF_PTT, initial_value=False)
         # self.pa_power = DigitalOutputDevice(UHF_PA_POWER, initial_value=False)
@@ -342,6 +347,7 @@ class UHF(Amplifier):
 class L_Band(Amplifier):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'L-Band'
         self.rf_ptt = DigitalOutputDevice(L_BAND_RF_PTT, initial_value=False)
         self.pa_power = DigitalOutputDevice(L_BAND_PA_POWER, initial_value=False)
 
@@ -362,6 +368,7 @@ class L_Band(Amplifier):
 
 class Accessory:
     def __init__(self, sock):
+        self.name = None
         self.power = None
         self.sock = sock
 
@@ -373,7 +380,9 @@ class Accessory:
         else:
             status.append('N/A')
 
-        message = 'Power: {}\n'.format(status[0])
+        message = 'Device: {}\n' \
+                  'Power: {}\n\n' \
+                  .format(self.name, status[0])
         self.sock.sendto(message.encode(), addr)
 
     def power_on(self, command, addr):
@@ -394,6 +403,7 @@ class Accessory:
 class RX_Swap(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'RX-Swap'
         self.power = DigitalOutputDevice(RX_SWAP_POWER, initial_value=False)
 
     def command_parser(self, command, addr, ptt_flag):
@@ -413,6 +423,7 @@ class RX_Swap(Accessory):
 class SBC_Satnogs(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'SBC-Satnogs'
         self.power = DigitalOutputDevice(SBC_SATNOGS_POWER, initial_value=False)
 
     def command_parser(self, command, addr):
@@ -428,6 +439,7 @@ class SBC_Satnogs(Accessory):
 class SDR_Lime(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'SDR-Lime'
         self.power = DigitalOutputDevice(SDR_LIME_POWER, initial_value=False)
 
     def command_parser(self, command, addr):
@@ -443,6 +455,7 @@ class SDR_Lime(Accessory):
 class Rotator(Accessory):
     def __init__(self, sock):
         super().__init__(sock)
+        self.name = 'Rotator'
         self.power = DigitalOutputDevice(ROTATOR_POWER, initial_value=False)
 
     def command_parser(self, command, addr):
@@ -501,7 +514,15 @@ class StationD:
                 case _:
                     # Fall through to non-device specific commands
                     match command:
-                        case['exit']:
+                        case ['status']:
+                            self.vhf.status(addr)
+                            self.uhf.status(addr)
+                            self.l_band.status(addr)
+                            self.rx_swap.status(addr)
+                            self.sbc_satnogs.status(addr)
+                            self.sdr_lime.status(addr)
+                            self.rotator.status(addr)
+                        case ['exit']:
                             break
                         case _:
                             print(Fore.RED + 'Invalid command')
