@@ -94,17 +94,24 @@ class Amplifier:
                   'Pa-Power: {}\n' \
                   'RF-PTT: {}\n' \
                   'LNA: {}\n' \
-                  'Polarization: {}\n\n' \
+                  'Polarization: {}\n' \
                   .format(self.name, status[0], status[1], status[2], status[3], status[4])
-        self.sock.sendto(message.encode(), addr)
+        self.sock.sendto(message.encode('utf-8'), addr)
+        print(Fore.BLUE + message)
 
     def molly_guard(self, command, addr):
+        device = command[0]
+        component = command[1]
+        state = command[2]
+
+        print('mollyguard() address: ' + str(addr))
+
         print(Fore.YELLOW + 'Please re-enter the command if you would like to continue turning {} {} for {}'
-              .format(command[1], command[2], command[0]))
+              .format(component, state, device))
         message = 'Please re-enter the command if you would like to continue turning {} {} for {}\n'\
-            .format(command[1], command[2], command[0])
-        self.sock.sendto(message.encode(), addr)
-        # Get confirmation from user, timeout after 20 seconds
+            .format(component, state, device)
+        self.sock.sendto(message.encode('utf-8'), addr)
+        # Get confirmation, timeout after 20 seconds
         try:
             while True:
                 self.sock.settimeout(20)
@@ -119,7 +126,7 @@ class Amplifier:
         except socket.timeout:
             print(Fore.RED + 'Command has timed out')
             message = 'Command has timed out\n'
-            self.sock.sendto(message.encode(), addr)
+            self.sock.sendto(message.encode('utf-8'), addr)
             self.sock.settimeout(None)
             return False
 
@@ -130,35 +137,37 @@ class Amplifier:
         diff_sec = diff.total_seconds()
         return diff_sec
 
-    def dow_key_on(self, command, addr):
+    def dow_key_on(self, addr):
         # Fail if PTT is on
         if self.rf_ptt.value == ON:
             print(Fore.RED + 'dow-key state cannot be changed while PTT is on')
             message = 'dow-key state cannot be changed while PTT is on\n'
-            self.sock.sendto(message.encode(), addr)
+            self.sock.sendto(message.encode('utf-8'), addr)
             return
 
         if self.dow_key.value != ON:
             self.dow_key.on()
-            success(command, self.sock, addr)
+            message = 'dow-key has been successfully turned on'
+            self.sock.sendto(message.encode('utf-8'), addr)
 
-    def dow_key_off(self, command, addr):
+    def dow_key_off(self, addr):
         # Fail if PTT is on
         if self.rf_ptt.value == ON:
             print(Fore.RED + 'dow-key state cannot be changed while PTT is on')
             message = 'dow-key state cannot be changed while PTT is on\n'
-            self.sock.sendto(message.encode(), addr)
+            self.sock.sendto(message.encode('utf-8'), addr)
             return
 
         if self.dow_key.value != OFF:
             self.dow_key.off()
-            success(command, self.sock, addr)
+            message = 'dow-key has been successfully turned off'
+            self.sock.sendto(message.encode('utf-8'), addr)
 
     def rf_ptt_on(self, command, addr, ptt_flag):
         if self.pa_power.value != ON:
             print(Fore.RED + 'pa-power must be on in order to use PTT')
             message = 'pa-power must be on in order to use PTT\n'
-            self.sock.sendto(message.encode(), addr)
+            self.sock.sendto(message.encode('utf-8'), addr)
             return
 
         if self.rf_ptt.value != ON:
@@ -190,7 +199,7 @@ class Amplifier:
         if self.pa_power.value != ON:
             self.pa_power.on()
             success(command, self.sock, addr)
-            self.dow_key_on(command, addr)
+            self.dow_key_on(addr)
         else:
             no_change(command, self.sock, addr)
 
@@ -200,21 +209,21 @@ class Amplifier:
             if self.ptt_off_time is None:
                 self.pa_power.off()
                 success(command, self.sock, addr)
-                self.dow_key_off(command, addr)
+                self.dow_key_off(addr)
             elif self.rf_ptt.value == ON:
                 print(Fore.RED + 'Cannot turn off pa-power while PTT is on.')
-                message = 'Cannot turn off pa-power while PTT is on'
-                self.sock.sendto(message.encode(), addr)
+                message = 'Cannot turn off pa-power while PTT is on\n'
+                self.sock.sendto(message.encode('utf-8'), addr)
             else:
                 diff_sec = self.calculate_ptt_off_time()
                 if diff_sec > PTT_COOLDOWN:
                     self.pa_power.off()
                     success(command, self.sock, addr)
-                    self.dow_key_off(command, addr)
+                    self.dow_key_off(addr)
                 else:
                     print(Fore.RED + 'Please wait {} seconds and try again.'.format(round(PTT_COOLDOWN - diff_sec)))
                     message = 'Please wait {} seconds and try again.\n'.format(round(PTT_COOLDOWN - diff_sec))
-                    self.sock.sendto(message.encode(), addr)
+                    self.sock.sendto(message.encode('utf-8'), addr)
         else:
             no_change(command, self.sock, addr)
 
@@ -223,13 +232,13 @@ class Amplifier:
         if self.rf_ptt.value == ON:
             print(Fore.RED + 'The LNA cannot be turned on while PTT is on for this band.')
             message = 'The LNA cannot be turned on while PTT is on for this band.\n'
-            self.sock.sendto(message.encode(), addr)
+            self.sock.sendto(message.encode('utf-8'), addr)
             return
 
         if self.lna.value != ON:
             # Require inverse lna and dow-key states
             if self.dow_key.value == ON:
-                self.dow_key_off(command, addr)
+                self.dow_key_off(addr)
 
             self.lna.on()
             success(command, self.sock, addr)
@@ -242,7 +251,7 @@ class Amplifier:
             success(command, self.sock, addr)
             # If dow-key turned off for LNA, turn it back on
             if self.pa_power.value == ON and self.dow_key.value == OFF:
-                self.dow_key_on(command, addr)
+                self.dow_key_on(addr)
         else:
             no_change(command, self.sock, addr)
 
@@ -252,7 +261,7 @@ class Amplifier:
             if self.rf_ptt.value != OFF:
                 print(Fore.RED + 'Cannot change polarization while rf-ptt is on.')
                 message = 'Cannot change polarization while rf-ptt is on.\n'
-                self.sock.sendto(message.encode(), addr)
+                self.sock.sendto(message.encode('utf-8'), addr)
             else:
                 time.sleep(0.1)
                 self.polarization.on()
@@ -266,7 +275,7 @@ class Amplifier:
             if self.rf_ptt.value != OFF:
                 print(Fore.RED + 'Cannot change polarization while rf-ptt is on.')
                 message = 'Cannot change polarization while rf-ptt is on.\n'
-                self.sock.sendto(message.encode(), addr)
+                self.sock.sendto(message.encode('utf-8'), addr)
             else:
                 time.sleep(0.1)
                 self.polarization.off()
@@ -387,9 +396,10 @@ class Accessory:
             status.append('N/A')
 
         message = 'Device: {}\n' \
-                  'Power: {}\n\n' \
+                  'Power: {}\n' \
                   .format(self.name, status[0])
-        self.sock.sendto(message.encode(), addr)
+        self.sock.sendto(message.encode('utf-8'), addr)
+        print(Fore.BLUE + message)
 
     def power_on(self, command, addr):
         if self.power.value != ON:
@@ -414,10 +424,11 @@ class RX_Swap(Accessory):
         self.power = DigitalOutputDevice(RX_SWAP_POWER, initial_value=False)
 
     def command_parser(self, command, addr, ptt_flag):
+        # Return if PTT is on
         if ptt_flag is True:
             print(Fore.RED + 'rx-swap cannot happen while PTT is active')
             message = 'rx-swap cannot happen while PTT is active\n'
-            self.sock.sendto(message.encode(), addr)
+            self.sock.sendto(message.encode('utf-8'), addr)
             return
 
         match command:
@@ -541,7 +552,7 @@ class StationD:
                         case _:
                             print(Fore.RED + 'Invalid command')
                             message = 'Invalid command\n'
-                            self.sock.sendto(message.encode(), addr)
+                            self.sock.sendto(message.encode('utf-8'), addr)
 
 
 def success(command, sock, addr):
@@ -551,7 +562,7 @@ def success(command, sock, addr):
 
     print(Fore.GREEN + '{} has successfully been turned {} for {}'.format(component, state, device))
     message = '{} has successfully been turned {} for {}\n'.format(component, state, device)
-    sock.sendto(message.encode(), addr)
+    sock.sendto(message.encode('utf-8'), addr)
 
 
 def no_change(command, sock, addr):
@@ -561,7 +572,7 @@ def no_change(command, sock, addr):
 
     print(Fore.YELLOW + '{} is already {} for {}.'.format(component, state, device))
     message = '{} is already {} for {}\n'.format(component, state, device)
-    sock.sendto(message.encode(), addr)
+    sock.sendto(message.encode('utf-8'), addr)
 
 
 def main():
