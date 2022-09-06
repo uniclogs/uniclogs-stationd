@@ -4,14 +4,12 @@ Date: Aug 2022
 
 StationD Power management
 """
-import sys
 import threading
 from gpiozero import DigitalOutputDevice
 import socket
 import logging
 from datetime import datetime
 import time
-from colorama import Fore
 
 # UDP
 UDP_IP = '127.0.0.1'
@@ -290,7 +288,6 @@ class Amplifier:
         except Exception as error:
             print(error)
 
-
     def polarization_right(self, command_obj):
         try:
             if self.polarization.value == RIGHT:
@@ -462,7 +459,6 @@ class RX_Swap(Accessory):
     def command_parser(self, command_obj, ptt_flag):
         # Return if PTT is on
         if ptt_flag is True:
-            print(Fore.RED + 'rx-swap cannot happen while PTT is active')
             message = 'rx-swap cannot happen while PTT is active\n'
             command_obj.send_response(message)
             return
@@ -625,9 +621,7 @@ class StationD:
                             self.sdr_lime.status(command_obj)
                             self.rotator.status(command_obj)
                         case _:
-                            print(Fore.RED + 'Invalid command')
-                            message = 'Invalid command\n'
-                            command_obj.send_response(message)
+                            command_obj.invalid_command_response()
 
     def command_listener(self):
         try:
