@@ -4,6 +4,8 @@ Date: Aug 2022
 
 StationD Power management
 """
+import sys
+import threading
 
 from gpiozero import DigitalOutputDevice
 import socket
@@ -94,41 +96,41 @@ class Amplifier:
                   'Pa-Power: {}\n' \
                   'RF-PTT: {}\n' \
                   'LNA: {}\n' \
-                  'Polarization: {}\n' \
+                  'Polarization: {}\n\n' \
                   .format(self.name, status[0], status[1], status[2], status[3], status[4])
         self.sock.sendto(message.encode('utf-8'), addr)
         print(Fore.BLUE + message)
 
-    def molly_guard(self, command, addr):
-        device = command[0]
-        component = command[1]
-        state = command[2]
-
-        print('mollyguard() address: ' + str(addr))
-
-        print(Fore.YELLOW + 'Please re-enter the command if you would like to continue turning {} {} for {}'
-              .format(component, state, device))
-        message = 'Please re-enter the command if you would like to continue turning {} {} for {}\n'\
-            .format(component, state, device)
-        self.sock.sendto(message.encode('utf-8'), addr)
-        # Get confirmation, timeout after 20 seconds
-        try:
-            while True:
-                self.sock.settimeout(20)
-                data, addr = self.sock.recvfrom(1024)
-                guard = data.decode().strip('\n').strip('\r').split()
-                if guard == command:
-                    self.sock.settimeout(None)
-                    return True
-                else:
-                    self.sock.settimeout(None)
-                    return False
-        except socket.timeout:
-            print(Fore.RED + 'Command has timed out')
-            message = 'Command has timed out\n'
-            self.sock.sendto(message.encode('utf-8'), addr)
-            self.sock.settimeout(None)
-            return False
+    # def molly_guard(self, command, addr):
+    #     device = command[0]
+    #     component = command[1]
+    #     state = command[2]
+    #
+    #     print('mollyguard() address: ' + str(addr))
+    #
+    #     print(Fore.YELLOW + 'Please re-enter the command if you would like to continue turning {} {} for {}'
+    #           .format(component, state, device))
+    #     message = 'Please re-enter the command if you would like to continue turning {} {} for {}\n'\
+    #         .format(component, state, device)
+    #     self.sock.sendto(message.encode('utf-8'), addr)
+    #     # Get confirmation, timeout after 20 seconds
+    #     try:
+    #         while True:
+    #             self.sock.settimeout(20)
+    #             data, addr = self.sock.recvfrom(1024)
+    #             guard = data.decode().strip('\n').strip('\r').split()
+    #             if guard == command:
+    #                 self.sock.settimeout(None)
+    #                 return True
+    #             else:
+    #                 self.sock.settimeout(None)
+    #                 return False
+    #     except socket.timeout:
+    #         print(Fore.RED + 'Command has timed out')
+    #         message = 'Command has timed out\n'
+    #         self.sock.sendto(message.encode('utf-8'), addr)
+    #         self.sock.settimeout(None)
+    #         return False
 
     def calculate_ptt_off_time(self):
         # TO-DO: Overflow guard?
@@ -147,7 +149,7 @@ class Amplifier:
 
         if self.dow_key.value != ON:
             self.dow_key.on()
-            message = 'dow-key has been successfully turned on'
+            message = 'dow-key has been successfully turned on\n'
             self.sock.sendto(message.encode('utf-8'), addr)
 
     def dow_key_off(self, addr):
@@ -160,7 +162,7 @@ class Amplifier:
 
         if self.dow_key.value != OFF:
             self.dow_key.off()
-            message = 'dow-key has been successfully turned off'
+            message = 'dow-key has been successfully turned off\n'
             self.sock.sendto(message.encode('utf-8'), addr)
 
     def rf_ptt_on(self, command, addr, ptt_flag):
@@ -302,8 +304,7 @@ class VHF(Amplifier):
             case ['vhf', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command, addr, ptt_flag)
             case ['vhf', 'pa-power', 'on']:
-                if self.molly_guard(command, addr):
-                    self.pa_power_on(command, addr)
+                self.pa_power_on(command, addr)
             case ['vhf', 'pa-power', 'off']:
                 self.pa_power_off(command, addr)
             case ['vhf', 'lna', 'on']:
@@ -338,8 +339,7 @@ class UHF(Amplifier):
             case ['uhf', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command, addr, ptt_flag)
             case ['uhf', 'pa-power', 'on']:
-                if self.molly_guard(command, addr):
-                    self.pa_power_on(command, addr)
+                self.pa_power_on(command, addr)
             case ['uhf', 'pa-power', 'off']:
                 self.pa_power_off(command, addr)
             case ['uhf', 'lna', 'on']:
@@ -371,8 +371,7 @@ class L_Band(Amplifier):
             case ['l-band', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command, addr, ptt_flag)
             case ['l-band', 'pa-power', 'on']:
-                if self.molly_guard(command, addr):
-                    self.pa_power_on(command, addr)
+                self.pa_power_on(command, addr)
             case ['l-band', 'pa-power', 'off']:
                 self.pa_power_off(command, addr)
 
@@ -396,7 +395,7 @@ class Accessory:
             status.append('N/A')
 
         message = 'Device: {}\n' \
-                  'Power: {}\n' \
+                  'Power: {}\n\n' \
                   .format(self.name, status[0])
         self.sock.sendto(message.encode('utf-8'), addr)
         print(Fore.BLUE + message)
@@ -498,6 +497,7 @@ class StationD:
         # UDP Socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(LISTENING_ADDRESS)
+        self.socket_lock = threading.Lock()
 
         # Amplifiers
         self.vhf = VHF(self.sock)
@@ -515,9 +515,12 @@ class StationD:
 
         # logging.basicConfig(filename='activity.log', encoding='utf-8', level=logging.DEBUG)
 
-    def command_listener(self):
-        while True:
-            data, addr = self.sock.recvfrom(1024)
+    def shutdown_server(self):
+        print('Closing connection...')
+        self.sock.close()
+
+    def command_handler(self, data, addr):
+        with self.socket_lock:
             command = data.decode().strip('\n').strip('\r').split()
             device = command[0]
 
@@ -547,12 +550,22 @@ class StationD:
                             self.sbc_satnogs.status(addr)
                             self.sdr_lime.status(addr)
                             self.rotator.status(addr)
-                        case ['exit']:
-                            break
                         case _:
                             print(Fore.RED + 'Invalid command')
-                            message = 'Invalid command\n'
+                            message = Fore.RED + 'Invalid command\n'
                             self.sock.sendto(message.encode('utf-8'), addr)
+
+    def command_listener(self):
+        try:
+            while True:
+                try:
+                    data, client_address = self.sock.recvfrom(1024)
+                    c_thread = threading.Thread(target=self.command_handler, args=(data, client_address))
+                    c_thread.start()
+                except OSError as err:
+                    print(err)
+        except KeyboardInterrupt:
+            self.shutdown_server()
 
 
 def success(command, sock, addr):
