@@ -185,14 +185,11 @@ class Amplifier:
             command_obj.success_response()
         except Redundant_Request:
             command_obj.no_change_response()
-            return ptt_flag
         except TX_Off:
             message = 'pa-power must be on in order to use PTT\n'
             command_obj.send_response(message)
-            return ptt_flag
         except Exception as error:
             print(error)
-            return ptt_flag
 
         return ptt_flag
 
@@ -208,10 +205,8 @@ class Amplifier:
             command_obj.success_response()
         except Redundant_Request:
             command_obj.no_change_response()
-            return ptt_flag
         except Exception as error:
             print(error)
-            return ptt_flag
 
         return ptt_flag
 
