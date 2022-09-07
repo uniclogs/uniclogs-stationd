@@ -57,6 +57,7 @@ class Amplifier:
         self.polarization = None
 
         self.ptt_off_time = None
+        self.molly_guard_time = None
 
     def status(self, command_obj):
         status = []
@@ -95,8 +96,32 @@ class Amplifier:
                   .format(self.name, status[0], status[1], status[2], status[3], status[4])
         command_obj.send_response(message)
 
-    def molly_guard(self):
-        pass
+    def molly_guard(self, command_obj):
+        try:
+            # first command request
+            if self.molly_guard_time is None:
+                # set timer
+                self.molly_guard_time = datetime.now()
+                message = 'Re-enter the command within the next 20 seconds if you would like to proceed \n'
+                command_obj.send_response(message)
+                return False
+
+            # second command request
+            now = datetime.now()
+            diff = now - self.molly_guard_time
+            diff_sec = diff.total_seconds()
+            if diff_sec > 20:
+                # took too long
+                raise Time_Out
+            else:
+                # reset timer to none
+                self.molly_guard_time = None
+                return True
+        except Time_Out:
+            message = 'The command has timed out\n'
+            command_obj.send_response(message)
+            self.molly_guard_time = None
+            return False
 
     def calculate_ptt_off_time(self):
         # TO-DO: Overflow guard?
@@ -325,7 +350,8 @@ class VHF(Amplifier):
             case ['vhf', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command_obj, ptt_flag)
             case ['vhf', 'pa-power', 'on']:
-                self.pa_power_on(command_obj)
+                if self.molly_guard(command_obj):
+                    self.pa_power_on(command_obj)
             case ['vhf', 'pa-power', 'off']:
                 self.pa_power_off(command_obj)
             case ['vhf', 'lna', 'on']:
@@ -362,7 +388,8 @@ class UHF(Amplifier):
             case ['uhf', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command_obj, ptt_flag)
             case ['uhf', 'pa-power', 'on']:
-                self.pa_power_on(command_obj)
+                if self.molly_guard(command_obj):
+                    self.pa_power_on(command_obj)
             case ['uhf', 'pa-power', 'off']:
                 self.pa_power_off(command_obj)
             case ['uhf', 'lna', 'on']:
@@ -396,7 +423,8 @@ class L_Band(Amplifier):
             case ['l-band', 'rf-ptt', 'off']:
                 ptt_flag = self.rf_ptt_off(command_obj, ptt_flag)
             case ['l-band', 'pa-power', 'on']:
-                self.pa_power_on(command_obj)
+                if self.molly_guard(command_obj):
+                    self.pa_power_on(command_obj)
             case ['l-band', 'pa-power', 'off']:
                 self.pa_power_off(command_obj)
             case _:
@@ -648,6 +676,10 @@ class TX_Off(Exception):
 
 
 class Redundant_Request(Exception):
+    pass
+
+
+class Time_Out(Exception):
     pass
 
 
