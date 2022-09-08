@@ -10,6 +10,7 @@ import socket
 import logging
 from datetime import datetime
 import time
+from multiprocessing import Manager
 
 # UDP
 UDP_IP = '127.0.0.1'
@@ -56,8 +57,13 @@ class Amplifier:
         self.lna = None
         self.polarization = None
 
-        self.ptt_off_time = None
+        # self.ptt_off_time = None
+
         self.molly_guard_time = None
+
+        # Shared data
+        self.manager = Manager()
+        self.shared = self.manager.dict()
 
     def status(self, command_obj):
         status = []
@@ -68,7 +74,7 @@ class Amplifier:
             status.append('N/A')
         # PTT
         if self.rf_ptt is not None:
-            status.append('ON') if self.rf_ptt.value == 1else status.append('OFF')
+            status.append('ON') if self.rf_ptt.value == 1 else status.append('OFF')
         else:
             status.append('N/A')
         # Pa-Power
@@ -126,7 +132,7 @@ class Amplifier:
     def calculate_ptt_off_time(self):
         # TO-DO: Overflow guard?
         now = datetime.now()
-        diff = now - self.ptt_off_time
+        diff = now - self.shared['ptt_off_time']
         diff_sec = diff.total_seconds()
         return diff_sec
 
@@ -200,7 +206,7 @@ class Amplifier:
 
             self.rf_ptt.off()
             #  set time ptt turned off
-            self.ptt_off_time = datetime.now()
+            self.shared['ptt_off_time'] = datetime.now()
             ptt_flag = False
             command_obj.success_response()
         except Redundant_Request:
@@ -231,7 +237,7 @@ class Amplifier:
                 raise PTT_Conflict
 
             #  Check PTT off for at least 2 minutes
-            if self.ptt_off_time is None:
+            if self.shared['ptt_off_time'] is None:
                 self.pa_power.off()
                 command_obj.success_response()
                 self.dow_key_off(command_obj)
