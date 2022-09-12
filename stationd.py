@@ -13,6 +13,7 @@ import time
 from multiprocessing import Manager
 from colorama import Fore
 from colorama import init as colorama_init
+import gpio
 
 colorama_init(autoreset=True)
 
@@ -66,34 +67,36 @@ class Amplifier:
         # Shared data
         self.manager = Manager()
         self.shared = self.manager.dict()
+        self.shared['ptt_off_time'] = None
 
     def status(self, command_obj):
-        status = []
+        status = {}
         # Dow-key
         if self.dow_key is not None:
-            status.append('ON') if self.dow_key.value == 1 else status.append('OFF')
+            status.update({'dow-key': 'ON'}) if self.dow_key.value == 1 else status.update({'dow-key': 'OFF'})
         else:
-            status.append('N/A')
+            status.update({'dow-key': 'N/A'})
         # Pa-Power
         if self.pa_power is not None:
-            status.append('ON') if self.pa_power.value == 1 else status.append('OFF')
+            status.update({'pa-power': 'ON'}) if self.pa_power.value == 1 else status.update({'pa-power': 'OFF'})
         else:
-            status.append('N/A')
+            status.update({'pa-power': 'N/A'})
         # PTT
         if self.rf_ptt is not None:
-            status.append('ON') if self.rf_ptt.value == 1 else status.append('OFF')
+            status.update({'rf-ptt': 'ON'}) if self.rf_ptt.value == 1 else status.update({'rf-ptt': 'OFF'})
         else:
-            status.append('N/A')
+            status.update({'rf-ptt': 'N/A'})
         # LNA
         if self.lna is not None:
-            status.append('ON') if self.lna.value == 1 else status.append('OFF')
+            status.update({'lna': 'ON'}) if self.lna.value == 1 else status.update({'lna':'OFF'})
         else:
-            status.append('N/A')
+            status.update({'lna': 'OFF'})
         # Polarization
         if self.polarization is not None:
-            status.append('LEFT') if self.polarization.value == 1 else status.append('RIGHT')
+            status.update({'polarization': 'LEFT'}) if self.polarization.value == 1 \
+        else status.update({'polarization': 'RIGHT'})
         else:
-            status .append('N/A')
+            status .update({'polarization': 'N/A'})
 
         message = 'Device: {}\n' \
                   'Dow-Key: {}\n' \
@@ -101,7 +104,8 @@ class Amplifier:
                   'RF-PTT: {}\n' \
                   'LNA: {}\n' \
                   'Polarization: {}\n\n' \
-                  .format(self.name, status[0], status[1], status[2], status[3], status[4])
+                  .format(self.name, status['dow-key'], status['pa-power'],
+                          status['rf-ptt'], status['lna'], status['polarization'])
         command_obj.send_response(message)
 
     def molly_guard(self, command_obj):
@@ -131,6 +135,8 @@ class Amplifier:
             command_obj.send_response(message)
             self.molly_guard_time = None
             return False
+        except Exception as error:
+            print(error)
 
     def calculate_ptt_off_time(self):
         # TO-DO: Overflow guard?
@@ -246,7 +252,7 @@ class Amplifier:
                 self.dow_key_off(command_obj)
             else:
                 diff_sec = self.calculate_ptt_off_time()
-                if diff_sec < PTT_COOLDOWN:
+                if diff_sec > PTT_COOLDOWN:
                     self.pa_power.off()
                     command_obj.success_response()
                     self.dow_key_off(command_obj)
@@ -348,6 +354,13 @@ class VHF(Amplifier):
         self.lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
         self.polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
+        # # gpio library
+        # self.dow_key = gpio.GPIOPin(VHF_DOW_KEY, gpio.OUT, initial=gpio.LOW)
+        # self.rf_ptt = gpio.GPIOPin(VHF_RF_PTT, gpio.OUT, initial=gpio.LOW)
+        # self.pa_power = gpio.GPIOPin(VHF_PA_POWER, gpio.OUT, initial=gpio.LOW)
+        # self.lna = gpio.GPIOPin(VHF_LNA, gpio.OUT, initial=gpio.LOW)
+        # self.polarization = gpio.GPIOPin(VHF_POLARIZATION, gpio.OUT, initial=gpio.LOW)
+
     def command_parser(self, command_obj, ptt_flag):
         match command_obj.command:
             case ['vhf', 'rf-ptt', 'on']:
@@ -445,16 +458,16 @@ class Accessory:
         self.power = None
 
     def status(self, command_obj):
-        status = []
+        status = {}
         # Power
         if self.power is not None:
-            status.append('ON') if self.power.value == 1 else status.append('OFF')
+            status.update({'power': 'ON'}) if self.power.value == 1 else status.update({'power':'OFF'})
         else:
-            status.append('N/A')
+            status.update({'power': 'N/A'})
 
         message = 'Device: {}\n' \
                   'Power: {}\n\n' \
-                  .format(self.name, status[0])
+                  .format(self.name, status['power'])
         command_obj.send_response(message)
 
     def power_on(self, command_obj):
@@ -576,6 +589,7 @@ class Command:
         state = self.command[2]
 
         message = Fore.GREEN + '{} has successfully been turned {} for {}\n'.format(component, state, device)
+        logging.debug(message + str(datetime.now()))
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
     def no_change_response(self):
@@ -617,7 +631,10 @@ class StationD:
         # PTT on/off
         self.ptt_flag = False
 
-        # logging.basicConfig(filename='activity.log', encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename='activity.log', encoding='utf-8', level=logging.DEBUG)
+
+    def configure(self):
+        pass
 
     def shutdown_server(self):
         print('Closing connection...')
