@@ -11,11 +11,8 @@ import logging
 from datetime import datetime
 import time
 from multiprocessing import Manager
-from colorama import Fore
-from colorama import init as colorama_init
 import gpio
 
-colorama_init(autoreset=True)
 
 # UDP
 UDP_IP = '127.0.0.1'
@@ -51,6 +48,8 @@ PTT_COOLDOWN = 120          # In seconds
 LEFT = 1
 RIGHT = 0
 
+PTT_COUNT = 2
+
 
 class Amplifier:
     def __init__(self):
@@ -67,6 +66,8 @@ class Amplifier:
         # Shared data
         self.manager = Manager()
         self.shared = self.manager.dict()
+
+        # initialize to datetime.now by checking pin state
         self.shared['ptt_off_time'] = None
 
     def status(self, command_obj):
@@ -88,13 +89,13 @@ class Amplifier:
             status.update({'rf-ptt': 'N/A'})
         # LNA
         if self.lna is not None:
-            status.update({'lna': 'ON'}) if self.lna.value == 1 else status.update({'lna':'OFF'})
+            status.update({'lna': 'ON'}) if self.lna.value == 1 else status.update({'lna': 'OFF'})
         else:
             status.update({'lna': 'OFF'})
         # Polarization
         if self.polarization is not None:
             status.update({'polarization': 'LEFT'}) if self.polarization.value == 1 \
-        else status.update({'polarization': 'RIGHT'})
+                                                    else status.update({'polarization': 'RIGHT'})
         else:
             status .update({'polarization': 'N/A'})
 
@@ -114,10 +115,12 @@ class Amplifier:
             if self.molly_guard_time is None:
                 # set timer
                 self.molly_guard_time = datetime.now()
-                message = Fore.YELLOW + 'Re-enter the command within the next 20 seconds' \
-                                        ' if you would like to proceed \n'
+                message = 'Re-enter the command within the next 20 seconds' \
+                          ' if you would like to proceed \n'
                 command_obj.send_response(message)
                 return False
+
+            # quietly time out
 
             # second command request
             now = datetime.now()
@@ -131,9 +134,9 @@ class Amplifier:
                 self.molly_guard_time = None
                 return True
         except Time_Out:
-            message = Fore.RED + 'The command has timed out\n'
+            message = 'The command has timed out\n'
             command_obj.send_response(message)
-            self.molly_guard_time = None
+            self.molly_guard_time = datetime.now()
             return False
         except Exception as error:
             print(error)
@@ -154,13 +157,15 @@ class Amplifier:
                 raise PTT_Conflict
 
             self.dow_key.on()
-            message = Fore.GREEN + 'dow-key has been successfully turned on\n'
+            message = 'SUCCESS: {} dow-key on\n'.format(command_obj.command[0])
+            logging.debug(message + str(datetime.now()))
             command_obj.send_response(message)
         except Redundant_Request:
-            command_obj.no_change_response()
-        except PTT_Conflict:
-            message = Fore.RED + 'dow-key state cannot be changed while PTT is on\n'
+            message = 'WARNING: {} dow-key on No Change\n'.format(command_obj.command[0])
+            logging.debug(message + str(datetime.now()))
             command_obj.send_response(message)
+        except PTT_Conflict:
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -173,13 +178,15 @@ class Amplifier:
                 raise PTT_Conflict
 
             self.dow_key.off()
-            message = Fore.GREEN + 'dow-key has been successfully turned off\n'
+            message = 'SUCCESS: {} dow-key off\n'.format(command_obj.command[0])
+            logging.debug(message + str(datetime.now()))
             command_obj.send_response(message)
         except Redundant_Request:
-            command_obj.no_change_response()
-        except PTT_Conflict:
-            message = Fore.RED + 'dow-key state cannot be changed while PTT is on\n'
+            message = 'WARNING: {} dow-key off No Change\n'.format(command_obj.command[0])
+            logging.debug(message + str(datetime.now()))
             command_obj.send_response(message)
+        except PTT_Conflict:
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -188,7 +195,7 @@ class Amplifier:
             if self.rf_ptt.value == ON:
                 raise Redundant_Request
             if self.pa_power.value == OFF:
-                raise TX_Off
+                raise PTT_Conflict
 
             #  Turn off Lna, cool down before turning on ptt
             if self.lna.value == ON:
@@ -200,9 +207,8 @@ class Amplifier:
             command_obj.success_response()
         except Redundant_Request:
             command_obj.no_change_response()
-        except TX_Off:
-            message = Fore.RED + 'pa-power must be on in order to use PTT\n'
-            command_obj.send_response(message)
+        except PTT_Conflict:
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -257,14 +263,13 @@ class Amplifier:
                     command_obj.success_response()
                     self.dow_key_off(command_obj)
                 else:
-                    message = Fore.YELLOW + 'Please wait {} seconds and try again.\n' \
+                    message = 'Please wait {} seconds and try again.\n' \
                               .format(round(PTT_COOLDOWN - diff_sec))
                     command_obj.send_response(message)
         except Redundant_Request:
             command_obj.no_change_response()
         except PTT_Conflict:
-            message = Fore.RED + 'Cannot turn off pa-power while PTT is on\n'
-            command_obj.send_response(message)
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -285,8 +290,7 @@ class Amplifier:
         except Redundant_Request:
             command_obj.no_change_response()
         except PTT_Conflict:
-            message = Fore.RED + 'The LNA cannot be turned on while PTT is on for this band.\n'
-            command_obj.send_response(message)
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -319,8 +323,7 @@ class Amplifier:
         except Redundant_Request:
             command_obj.no_change_response()
         except PTT_Conflict:
-            message = Fore.RED + 'Cannot change polarization while rf-ptt is on.\n'
-            command_obj.send_response(message)
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -337,8 +340,7 @@ class Amplifier:
         except Redundant_Request:
             command_obj.no_change_response()
         except PTT_Conflict:
-            message = Fore.RED + 'Cannot change polarization while rf-ptt is on.\n'
-            command_obj.send_response(message)
+            command_obj.ptt_conflict_response()
         except Exception as error:
             print(error)
 
@@ -348,18 +350,18 @@ class VHF(Amplifier):
         super().__init__()
         self.name = 'VHF'
 
-        self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
-        self.rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
-        self.pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
-        self.lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
-        self.polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
+        # self.dow_key = DigitalOutputDevice(VHF_DOW_KEY, initial_value=False)
+        # self.rf_ptt = DigitalOutputDevice(VHF_RF_PTT, initial_value=False)
+        # self.pa_power = DigitalOutputDevice(VHF_PA_POWER, initial_value=False)
+        # self.lna = DigitalOutputDevice(VHF_LNA, initial_value=False)
+        # self.polarization = DigitalOutputDevice(VHF_POLARIZATION, initial_value=False)
 
-        # # gpio library
-        # self.dow_key = gpio.GPIOPin(VHF_DOW_KEY, gpio.OUT, initial=gpio.LOW)
-        # self.rf_ptt = gpio.GPIOPin(VHF_RF_PTT, gpio.OUT, initial=gpio.LOW)
-        # self.pa_power = gpio.GPIOPin(VHF_PA_POWER, gpio.OUT, initial=gpio.LOW)
-        # self.lna = gpio.GPIOPin(VHF_LNA, gpio.OUT, initial=gpio.LOW)
-        # self.polarization = gpio.GPIOPin(VHF_POLARIZATION, gpio.OUT, initial=gpio.LOW)
+        # gpio library
+        self.dow_key = gpio.GPIOPin(VHF_DOW_KEY, gpio.OUT, initial=gpio.LOW)
+        self.rf_ptt = gpio.GPIOPin(VHF_RF_PTT, gpio.OUT, initial=gpio.LOW)
+        self.pa_power = gpio.GPIOPin(VHF_PA_POWER, gpio.OUT, initial=gpio.LOW)
+        self.lna = gpio.GPIOPin(VHF_LNA, gpio.OUT, initial=gpio.LOW)
+        self.polarization = gpio.GPIOPin(VHF_POLARIZATION, gpio.OUT, initial=gpio.LOW)
 
     def command_parser(self, command_obj, ptt_flag):
         match command_obj.command:
@@ -461,7 +463,7 @@ class Accessory:
         status = {}
         # Power
         if self.power is not None:
-            status.update({'power': 'ON'}) if self.power.value == 1 else status.update({'power':'OFF'})
+            status.update({'power': 'ON'}) if self.power.value == 1 else status.update({'power': 'OFF'})
         else:
             status.update({'power': 'N/A'})
 
@@ -503,10 +505,9 @@ class RX_Swap(Accessory):
         self.power = DigitalOutputDevice(RX_SWAP_POWER, initial_value=False)
 
     def command_parser(self, command_obj, ptt_flag):
-        # Return if PTT is on
+        # Fail if PTT is on
         if ptt_flag is True:
-            message = Fore.RED + 'rx-swap cannot happen while PTT is active\n'
-            command_obj.send_response(message)
+            command_obj.ptt_conflict_response()
             return
 
         match command_obj.command:
@@ -588,7 +589,7 @@ class Command:
         component = self.command[1]
         state = self.command[2]
 
-        message = Fore.GREEN + '{} has successfully been turned {} for {}\n'.format(component, state, device)
+        message = 'SUCCESS: {} {} {}\n'.format(device, component, state)
         logging.debug(message + str(datetime.now()))
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
@@ -597,11 +598,22 @@ class Command:
         component = self.command[1]
         state = self.command[2]
 
-        message = Fore.YELLOW + '{} is already {} for {}\n'.format(component, state, device)
+        message = 'WARNING: {}  {} {} No Change\n'.format(device, component, state)
+        self.sock.sendto(message.encode('utf-8'), self.addr)
+
+    def ptt_conflict_response(self):
+        device = self.command[0]
+        component = self.command[1]
+        state = self.command[2]
+
+        message = 'FAIL: {} {} {} PTT Conflict\n'.format(device, component, state)
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
     def invalid_command_response(self):
-        message = Fore.RED + 'Invalid command\n'
+        device = self.command[0]
+        component = self.command[1]
+        state = self.command[2]
+        message = 'FAIL: {} {} {} Invalid Command\n'.format(device, component, state)
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
     def send_response(self, message):
