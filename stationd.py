@@ -74,22 +74,22 @@ class Amplifier:
         status = {}
         # Dow-key
         if self.dow_key is not None:
-            status.update({'dow-key': 'ON'}) if self.dow_key.read() == 1 else status.update({'dow-key': 'OFF'})
+            status.update({'dow-key': 'ON'}) if self.dow_key.read() is ON else status.update({'dow-key': 'OFF'})
         else:
             status.update({'dow-key': 'N/A'})
         # Pa-Power
         if self.pa_power is not None:
-            status.update({'pa-power': 'ON'}) if self.pa_power.read() == 1 else status.update({'pa-power': 'OFF'})
+            status.update({'pa-power': 'ON'}) if self.pa_power.read() is ON else status.update({'pa-power': 'OFF'})
         else:
             status.update({'pa-power': 'N/A'})
         # PTT
         if self.rf_ptt is not None:
-            status.update({'rf-ptt': 'ON'}) if self.rf_ptt.read() == 1 else status.update({'rf-ptt': 'OFF'})
+            status.update({'rf-ptt': 'ON'}) if self.rf_ptt.read() is ON else status.update({'rf-ptt': 'OFF'})
         else:
             status.update({'rf-ptt': 'N/A'})
         # LNA
         if self.lna is not None:
-            status.update({'lna': 'ON'}) if self.lna.read() == 1 else status.update({'lna': 'OFF'})
+            status.update({'lna': 'ON'}) if self.lna.read() is ON else status.update({'lna': 'OFF'})
         else:
             status.update({'lna': 'N/A'})
         # Polarization
@@ -187,12 +187,12 @@ class Amplifier:
                 raise PTT_Conflict
 
             self.dow_key.write(gpio.HIGH)
-            message = 'SUCCESS: {} dow-key on\n'.format(command_obj.command[0])
-            logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(command_obj.addr))
+            message = f'SUCCESS: {command_obj.command[0]} dow-key on\n'
+            logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(command_obj.addr)}')
             command_obj.send_response(message)
         except Redundant_Request:
-            message = 'WARNING: {} dow-key on No Change\n'.format(command_obj.command[0])
-            logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(command_obj.addr))
+            message = f'WARNING: {command_obj.command[0]} dow-key on No Change\n'
+            logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(command_obj.addr)}')
             command_obj.send_response(message)
         except PTT_Conflict:
             command_obj.ptt_conflict_response()
@@ -208,12 +208,12 @@ class Amplifier:
                 raise PTT_Conflict
 
             self.dow_key.write(gpio.LOW)
-            message = 'SUCCESS: {} dow-key off\n'.format(command_obj.command[0])
-            logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(command_obj.addr))
+            message = f'SUCCESS: {command_obj.command[0]} dow-key off\n'
+            logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(command_obj.addr)}')
             command_obj.send_response(message)
         except Redundant_Request:
-            message = 'WARNING: {} dow-key off No Change\n'.format(command_obj.command[0])
-            logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(command_obj.addr))
+            message = f'WARNING: {command_obj.command[0]} dow-key off No Change\n'
+            logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(command_obj.addr)}')
             command_obj.send_response(message)
         except PTT_Conflict:
             command_obj.ptt_conflict_response()
@@ -303,8 +303,7 @@ class Amplifier:
                     if self.dow_key is not None:
                         self.dow_key_off(command_obj)
                 else:
-                    message = 'WARNING: Please wait {} seconds and try again.\n' \
-                              .format(round(PTT_COOLDOWN - diff_sec))
+                    message = f'WARNING: Please wait {round(PTT_COOLDOWN - diff_sec)} seconds and try again.\n'
                     command_obj.send_response(message)
         except Redundant_Request:
             command_obj.no_change_response()
@@ -560,7 +559,7 @@ class Accessory:
                     message = 'ON\n' if self.power.read() is ON else 'OFF\n'
                     command_obj.send_response(message)
         except No_Component:
-            message = 'FAIL: {} No Component\n'.format(component)
+            message = f'FAIL: {component} No Component\n'
             command_obj.send_response(message)
         except Exception as error:
             print(error)
@@ -723,40 +722,40 @@ class Command:
         component = self.command[1]
         state = self.command[2]
 
-        message = 'SUCCESS: {} {} {}\n'.format(device, component, state)
+        message = f'SUCCESS: {device} {component} {state}\n'
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
-        logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(self.addr))
+        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.addr)}')
 
     def no_change_response(self):
         device = self.command[0]
         component = self.command[1]
         state = self.command[2]
 
-        message = 'WARNING: {}  {} {} No Change\n'.format(device, component, state)
+        message = f'WARNING: {device}  {component} {state} No Change\n'
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
-        logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(self.addr))
+        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.addr)}')
 
     def ptt_conflict_response(self):
         device = self.command[0]
         component = self.command[1]
         state = self.command[2]
 
-        message = 'FAIL: {} {} {} PTT Conflict\n'.format(device, component, state)
+        message = f'FAIL: {device} {component} {state} PTT Conflict\n'
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
-        logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(self.addr))
+        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.addr)}')
 
     def invalid_command_response(self):
         device = self.command[0]
         component = self.command[1]
         state = self.command[2]
 
-        message = 'FAIL: {} {} {} Invalid Command\n'.format(device, component, state)
+        message = f'FAIL: {device} {component} {state} Invalid Command\n'
         self.sock.sendto(message.encode('utf-8'), self.addr)
 
-        logging.debug(str(datetime.now()) + ' ' + message + 'address: ' + str(self.addr))
+        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.addr)}')
 
     def molly_guard_response(self):
         message = 'Re-enter the command within the next 20 seconds' \
