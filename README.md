@@ -2,24 +2,33 @@
 
 A power management Daemon for Uniclogs. Accept commands via UDP.
 
----
 ## Installation
 
-asdf
 
----
 
 ## Usage
 
-asdf
+Command format: `````<Device> <Component> <State>`````
 
----
+```
+# turn on TX for VHF amplifier
+vhf pa-power on
 
-## Contributing
+# turn off RX for UHF amplifier
+uhf lna off
 
-asdf
+# turn on power for rotator accessory
+rotator power on
 
----
+# returns status for all devices for the L-Band amplifier
+l-band status
+
+# return status for polarization of VHF amplifier
+vhf polarization status
+
+# returns status for all components of every device
+status
+```
 
 ## License
 
