@@ -1,6 +1,7 @@
 """
 Author: Steven Borrego
 Date: Aug 2022
+License: GPL 3.0
 
 StationD Power management
 """
@@ -94,7 +95,7 @@ class Amplifier:
             status.update({'polarization': 'LEFT'}) if self.polarization.read() == 1 \
                                                     else status.update({'polarization': 'RIGHT'})
         else:
-            status .update({'polarization': 'N/A'})
+            status.update({'polarization': 'N/A'})
 
         message = 'Device: {}\n' \
                   'Dow-Key: {}\n' \
@@ -114,31 +115,31 @@ class Amplifier:
                     if self.dow_key is None:
                         raise No_Component
 
-                    message = 'ON\n' if self.dow_key.read() is ON else 'OFF\n'
+                    message = 'SUCCESS: ON\n' if self.dow_key.read() is ON else 'SUCCESS: OFF\n'
                     command_obj.send_response(message)
                 case 'rf-ptt':
                     if self.rf_ptt is None:
                         raise No_Component
 
-                    message = 'ON\n' if self.rf_ptt.read() is ON else 'OFF\n'
+                    message = 'SUCCESS: ON\n' if self.rf_ptt.read() is ON else 'SUCCESS: OFF\n'
                     command_obj.send_response(message)
                 case 'pa-power':
                     if self.pa_power is None:
                         raise No_Component
 
-                    message = 'ON\n' if self.pa_power.read() is ON else 'OFF\n'
+                    message = 'SUCCESS: ON\n' if self.pa_power.read() is ON else 'SUCCESS: OFF\n'
                     command_obj.send_response(message)
                 case 'lna':
                     if self.lna is None:
                         raise No_Component
 
-                    message = 'ON\n' if self.lna.read() is ON else 'OFF\n'
+                    message = 'SUCCESS: ON\n' if self.lna.read() is ON else 'SUCCESS: OFF\n'
                     command_obj.send_response(message)
                 case 'polarization':
                     if self.polarization is None:
                         raise No_Component
 
-                    message = 'LEFT\n' if self.polarization.read() is ON else 'RIGHT\n'
+                    message = 'SUCCESS: LEFT\n' if self.polarization.read() is ON else 'SUCCESS: RIGHT\n'
                     command_obj.send_response(message)
         except No_Component:
             message = f'FAIL: {component} No Component\n'
@@ -392,54 +393,34 @@ class VHF(Amplifier):
         self.name = 'VHF'
         # Dow-key
         self.dow_key = gpio.GPIOPin(VHF_DOW_KEY, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.dow_key.read()}')
         if self.dow_key.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.dow_key.set_direction(gpio.OUT)
-            print(f'value: {self.dow_key.read()}')
         if not self.dow_key.read():
             self.dow_key.write(gpio.LOW)
-            print(f'Set value to {self.dow_key.read()}')
         # PTT
         self.rf_ptt = gpio.GPIOPin(VHF_RF_PTT, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.rf_ptt.read()}')
         if self.rf_ptt.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.rf_ptt.set_direction(gpio.OUT)
-            print(f'value: {self.rf_ptt.read()}')
         if not self.rf_ptt.read():
             self.rf_ptt.write(gpio.LOW)
-            print(f'Set value to {self.rf_ptt.read()}')
         # TX
         self.pa_power = gpio.GPIOPin(VHF_PA_POWER, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.pa_power.read()}')
         if self.pa_power.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.pa_power.set_direction(gpio.OUT)
-            print(f'value: {self.pa_power.read()}')
         if not self.pa_power.read():
             self.pa_power.write(gpio.LOW)
-            print(f'Set value to {self.pa_power.read()}')
         # RX
         self.lna = gpio.GPIOPin(VHF_LNA, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.lna.read()}')
         if self.lna.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.lna.set_direction(gpio.OUT)
-            print(f'value: {self.lna.read()}')
         if not self.lna.read():
             self.lna.write(gpio.LOW)
-            print(f'Set value to {self.lna.read()}')
         # Polarization
         self.polarization = gpio.GPIOPin(VHF_POLARIZATION, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.polarization.read()}')
         if self.polarization.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.polarization.set_direction(gpio.OUT)
-            print(f'value: {self.polarization.read()}')
         if not self.polarization.read():
             self.polarization.write(gpio.LOW)
-            print(f'Set value to {self.polarization.read()}')
 
     def command_parser(self, command_obj, num_active_ptt):
         match command_obj.command:
@@ -482,54 +463,34 @@ class UHF(Amplifier):
         self.name = 'UHF'
         # # Dow-key
         # self.dow_key = gpio.GPIOPin(UHF_DOW_KEY, None, initial=None)
-        # print(f'GPIOPin object returned with value: {self.dow_key.read()}')
         # if self.dow_key.get_direction() != gpio.OUT:
-        #     print('Direction is not out. Setting.')
         #     self.dow_key.set_direction(gpio.OUT)
-        #     print(f'value: {self.dow_key.read()}')
         # if not self.dow_key.read():
         #     self.dow_key.write(gpio.LOW)
-        #     print(f'Set value to {self.dow_key.read()}')
         # # PTT
         # self.rf_ptt = gpio.GPIOPin(UHF_RF_PTT, None, initial=None)
-        # print(f'GPIOPin object returned with value: {self.rf_ptt.read()}')
         # if self.rf_ptt.get_direction() != gpio.OUT:
-        #     print('Direction is not out. Setting.')
         #     self.rf_ptt.set_direction(gpio.OUT)
-        #     print(f'value: {self.rf_ptt.read()}')
         # if not self.rf_ptt.read():
         #     self.rf_ptt.write(gpio.LOW)
-        #     print(f'Set value to {self.rf_ptt.read()}')
         # # TX
         # self.pa_power = gpio.GPIOPin(UHF_PA_POWER, None, initial=None)
-        # print(f'GPIOPin object returned with value: {self.pa_power.read()}')
         # if self.pa_power.get_direction() != gpio.OUT:
-        #     print('Direction is not out. Setting.')
         #     self.pa_power.set_direction(gpio.OUT)
-        #     print(f'value: {self.pa_power.read()}')
         # if not self.pa_power.read():
         #     self.pa_power.write(gpio.LOW)
-        #     print(f'Set value to {self.pa_power.read()}')
         # # RX
         # self.lna = gpio.GPIOPin(UHF_LNA, None, initial=None)
-        # print(f'GPIOPin object returned with value: {self.lna.read()}')
         # if self.lna.get_direction() != gpio.OUT:
-        #     print('Direction is not out. Setting.')
         #     self.lna.set_direction(gpio.OUT)
-        #     print(f'value: {self.lna.read()}')
         # if not self.lna.read():
         #     self.lna.write(gpio.LOW)
-        #     print(f'Set value to {self.lna.read()}')
         # # Polarization
         # self.polarization = gpio.GPIOPin(UHF_POLARIZATION, None, initial=None)
-        # print(f'GPIOPin object returned with value: {self.polarization.read()}')
         # if self.polarization.get_direction() != gpio.OUT:
-        #     print('Direction is not out. Setting.')
         #     self.polarization.set_direction(gpio.OUT)
-        #     print(f'value: {self.polarization.read()}')
         # if not self.polarization.read():
         #     self.polarization.write(gpio.LOW)
-        #     print(f'Set value to {self.polarization.read()}')
 
     def command_parser(self, command_obj, num_active_ptt):
         match command_obj.command:
@@ -573,24 +534,16 @@ class L_Band(Amplifier):
 
         # PTT
         self.rf_ptt = gpio.GPIOPin(L_BAND_RF_PTT, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.rf_ptt.read()}')
         if self.rf_ptt.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.rf_ptt.set_direction(gpio.OUT)
-            print(f'value: {self.rf_ptt.read()}')
         if not self.rf_ptt.read():
             self.rf_ptt.write(gpio.LOW)
-            print(f'Set value to {self.rf_ptt.read()}')
         # TX
         self.pa_power = gpio.GPIOPin(L_BAND_PA_POWER, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.pa_power.read()}')
         if self.pa_power.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.pa_power.set_direction(gpio.OUT)
-            print(f'value: {self.pa_power.read()}')
         if not self.pa_power.read():
             self.pa_power.write(gpio.LOW)
-            print(f'Set value to {self.pa_power.read()}')
 
     def command_parser(self, command_obj, num_active_ptt):
         match command_obj.command:
@@ -640,7 +593,7 @@ class Accessory:
                     if self.power.read() is None:
                         raise No_Component
 
-                    message = 'ON\n' if self.power.read() is ON else 'OFF\n'
+                    message = 'SUCCESS: ON\n' if self.power.read() is ON else 'SUCCESS: OFF\n'
                     command_obj.send_response(message)
         except No_Component:
             message = f'FAIL: {component} No Component\n'
@@ -679,14 +632,10 @@ class RX_Swap(Accessory):
         self.name = 'RX-Swap'
         # Power
         self.power = gpio.GPIOPin(RX_SWAP_POWER, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.power.read()}')
         if self.power.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.power.set_direction(gpio.OUT)
-            print(f'value: {self.power.read()}')
         if not self.power.read():
             self.power.write(gpio.LOW)
-            print(f'Set value to {self.power.read()}')
 
     def rx_swap_power_on(self, command_obj, num_active_ptt):
         try:
@@ -742,14 +691,10 @@ class SBC_Satnogs(Accessory):
         self.name = 'SBC-Satnogs'
         # Power
         self.power = gpio.GPIOPin(SBC_SATNOGS_POWER, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.power.read()}')
         if self.power.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.power.set_direction(gpio.OUT)
-            print(f'value: {self.power.read()}')
         if not self.power.read():
             self.power.write(gpio.LOW)
-            print(f'Set value to {self.power.read()}')
 
     def command_parser(self, command_obj):
         match command_obj.command:
@@ -771,14 +716,10 @@ class SDR_Lime(Accessory):
         self.name = 'SDR-Lime'
         # Power
         self.power = gpio.GPIOPin(SDR_LIME_POWER, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.power.read()}')
         if self.power.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.power.set_direction(gpio.OUT)
-            print(f'value: {self.power.read()}')
         if not self.power.read():
             self.power.write(gpio.LOW)
-            print(f'Set value to {self.power.read()}')
 
     def command_parser(self, command_obj):
         match command_obj.command:
@@ -800,14 +741,10 @@ class Rotator(Accessory):
         self.name = 'Rotator'
         # Power
         self.power = gpio.GPIOPin(ROTATOR_POWER, None, initial=None)
-        print(f'GPIOPin object returned with value: {self.power.read()}')
         if self.power.get_direction() != gpio.OUT:
-            print('Direction is not out. Setting.')
             self.power.set_direction(gpio.OUT)
-            print(f'value: {self.power.read()}')
         if not self.power.read():
             self.power.write(gpio.LOW)
-            print(f'Set value to {self.power.read()}')
 
     def command_parser(self, command_obj):
         match command_obj.command:
@@ -880,8 +817,6 @@ class Command:
 
 class StationD:
     def __init__(self):
-        # TO-DO: get status of devices on initialization
-
         # UDP Socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(LISTENING_ADDRESS)
@@ -902,9 +837,6 @@ class StationD:
         self.num_active_ptt = 0
 
         logging.basicConfig(filename='activity.log', encoding='utf-8', level=logging.DEBUG)
-
-    def configure(self):
-        pass
 
     def shutdown_server(self):
         print('Closing connection...')
