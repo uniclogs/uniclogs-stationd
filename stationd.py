@@ -69,11 +69,12 @@ class Amplifier:
         self.shared['ptt_off_time'] = datetime.now()
 
     def device_status(self, command_obj):
+        p_state = 'LEFT' if get_state(self.polarization) is ON else 'RIGHT'
         command_obj.status = f'{command_obj.command[0]} dow-key {get_state(self.dow_key)}\n' \
                              f'{command_obj.command[0]} rf-ptt {get_state(self.rf_ptt)}\n' \
                              f'{command_obj.command[0]} pa-power {get_state(self.pa_power)}\n' \
                              f'{command_obj.command[0]} lna {get_state(self.lna)}\n' \
-                             f'{command_obj.command[0]} polarization {get_state(self.polarization)}\n'
+                             f'{command_obj.command[0]} polarization {p_state}\n'
         raise Status(command_obj)
 
     def component_status(self, command_obj):
@@ -92,7 +93,8 @@ class Amplifier:
                 command_obj.status = get_status(self.lna, command_obj)
                 raise Status(command_obj)
             case 'polarization':
-                command_obj.status = get_status(self.polarization, command_obj)
+                p_state = 'LEFT' if get_state(self.polarization) is LEFT else 'RIGHT'
+                command_obj.status = f'{command_obj.command[0]} {command_obj.command[1]} {p_state}\n'
                 raise Status(command_obj)
 
     def molly_guard(self, command_obj):
@@ -663,7 +665,7 @@ def get_state(gpiopin):
 
 
 def get_status(gpiopin, command_obj):
-    status = f'STATUS: {command_obj.command[0]} {command_obj.command[1]} {get_state(gpiopin)}\n'
+    status = f'{command_obj.command[0]} {command_obj.command[1]} {get_state(gpiopin)}\n'
     return status
 
 
