@@ -69,7 +69,7 @@ class Amplifier:
         self.shared['ptt_off_time'] = datetime.now()
 
     def device_status(self, command_obj):
-        p_state = 'LEFT' if get_state(self.polarization) is ON else 'RIGHT'
+        p_state = 'LEFT' if get_state(self.polarization) is LEFT else 'RIGHT'
         command_obj.status = f'{command_obj.command[0]} dow-key {get_state(self.dow_key)}\n' \
                              f'{command_obj.command[0]} rf-ptt {get_state(self.rf_ptt)}\n' \
                              f'{command_obj.command[0]} pa-power {get_state(self.pa_power)}\n' \
@@ -137,7 +137,7 @@ class Amplifier:
             except (Success, No_Change):
                 pass
         # Ptt command received, turn off LNA
-        if self.lna.read() is not None:
+        if self.lna is not None:
             try:
                 self.lna_off(command_obj)
             except (Success, No_Change):
