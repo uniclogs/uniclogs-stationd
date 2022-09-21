@@ -109,9 +109,6 @@ class Amplifier:
     def dow_key_on(self, command_obj):
         if self.dow_key.read() is ON:
             raise No_Change(command_obj)
-        # Fail if PTT is on
-        if self.rf_ptt.read() is ON:
-            raise PTT_Conflict(command_obj)
 
         self.dow_key.write(ON)
         raise Success(command_obj)
@@ -119,9 +116,6 @@ class Amplifier:
     def dow_key_off(self, command_obj):
         if self.dow_key.read() is OFF:
             raise No_Change(command_obj)
-        # Fail if PTT is on
-        if self.rf_ptt.read() is ON:
-            raise PTT_Conflict(command_obj)
 
         self.dow_key.write(OFF)
         raise Success(command_obj)
@@ -140,7 +134,12 @@ class Amplifier:
                 self.dow_key_on(command_obj)
             except (Success, No_Change):
                 pass
-
+        # Ptt command received, turn off LNA
+        if self.lna.read() is not None:
+            try:
+                self.lna_off(command_obj)
+            except (Success, No_Change):
+                pass
         # brief cooldown
         time.sleep(SLEEP_TIMER)
         self.rf_ptt.write(ON)
