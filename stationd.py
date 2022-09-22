@@ -156,6 +156,7 @@ class Amplifier:
         #  set time ptt turned off
         self.shared['ptt_off_time'] = datetime.now()
         command_obj.num_active_ptt -= 1
+        # make sure num_active_ptt never falls below 0
         if command_obj.num_active_ptt < 0:
             command_obj.num_active_ptt = 0
 
