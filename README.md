@@ -1,6 +1,6 @@
 # Uniclogs StationD
 
-A power management Daemon for Uniclogs. Accept network commands via UDP.
+A power management Daemon for Uniclogs. Accepts network commands via UDP.
 
 ## Installation
 
@@ -36,8 +36,8 @@ l-band status
 # return status for polarization of VHF amplifier
 vhf polarization status
 
-# returns status for all components of every device
-status
+# returns status for all components of UHF amplifier
+uhf status
 ```
 
 Supported Commands:

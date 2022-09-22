@@ -70,32 +70,32 @@ class Amplifier:
 
     def device_status(self, command_obj):
         p_state = 'LEFT' if get_state(self.polarization) is LEFT else 'RIGHT'
-        command_obj.status = f'{command_obj.command[0]} dow-key {get_state(self.dow_key)}\n' \
-                             f'{command_obj.command[0]} rf-ptt {get_state(self.rf_ptt)}\n' \
-                             f'{command_obj.command[0]} pa-power {get_state(self.pa_power)}\n' \
-                             f'{command_obj.command[0]} lna {get_state(self.lna)}\n' \
-                             f'{command_obj.command[0]} polarization {p_state}\n'
-        raise Status(command_obj)
+        status = f'{command_obj.command[0]} dow-key {get_state(self.dow_key)}\n' \
+                 f'{command_obj.command[0]} rf-ptt {get_state(self.rf_ptt)}\n' \
+                 f'{command_obj.command[0]} pa-power {get_state(self.pa_power)}\n' \
+                 f'{command_obj.command[0]} lna {get_state(self.lna)}\n' \
+                 f'{command_obj.command[0]} polarization {p_state}\n'
+        raise Status(command_obj, status)
 
     def component_status(self, command_obj):
         component = command_obj.command[1]
         match component:
             case 'dow-key':
-                command_obj.status = get_status(self.dow_key, command_obj)
-                raise Status(command_obj)
+                status = get_status(self.dow_key, command_obj)
+                raise Status(command_obj, status)
             case 'rf-ptt':
-                command_obj.status = get_status(self.rf_ptt, command_obj)
-                raise Status(command_obj)
+                status = get_status(self.rf_ptt, command_obj)
+                raise Status(command_obj, status)
             case 'pa-power':
-                command_obj.status = get_status(self.pa_power, command_obj)
-                raise Status(command_obj)
+                status = get_status(self.pa_power, command_obj)
+                raise Status(command_obj, status)
             case 'lna':
-                command_obj.status = get_status(self.lna, command_obj)
-                raise Status(command_obj)
+                status = get_status(self.lna, command_obj)
+                raise Status(command_obj, status)
             case 'polarization':
                 p_state = 'LEFT' if get_state(self.polarization) is LEFT else 'RIGHT'
-                command_obj.status = f'{command_obj.command[0]} {command_obj.command[1]} {p_state}\n'
-                raise Status(command_obj)
+                status = f'{command_obj.command[0]} {command_obj.command[1]} {p_state}\n'
+                raise Status(command_obj, status)
 
     def molly_guard(self, command_obj):
         diff_sec = calculate_diff_sec(self.molly_guard_time)
@@ -387,15 +387,15 @@ class Accessory:
         self.power = None
 
     def device_status(self, command_obj):
-        command_obj.status = f'{command_obj.command[0]} power {get_state(self.power)}\n'
-        raise Status(command_obj)
+        status = f'{command_obj.command[0]} power {get_state(self.power)}\n'
+        raise Status(command_obj, status)
 
     def component_status(self, command_obj):
         component = command_obj.command[1]
         match component:
             case 'power':
-                command_obj.status = get_status(self.power, command_obj)
-                raise Status(command_obj)
+                status = get_status(self.power, command_obj)
+                raise Status(command_obj, status)
 
     def power_on(self, command_obj):
         if self.power.read() is ON:
@@ -521,53 +521,11 @@ class Rotator(Accessory):
 
 
 class Command:
-    def __init__(self, command, sock, addr, status=None, num_active_ptt=None):
+    def __init__(self, command, sock, addr, num_active_ptt=None):
         self.command = command
         self.sock = sock
         self.addr = addr
-        self.status = status
         self.num_active_ptt = num_active_ptt
-
-    def success_response(self):
-        message = f'SUCCESS: {self.command[0]} {self.command[1]} {self.command[2]}\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
-
-    def no_change_response(self):
-        message = f'WARNING: {self.command[0]} {self.command[1]} {self.command[2]} No Change\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.addr)}')
-
-    def ptt_conflict_response(self):
-        message = f'FAIL: {self.command[0]} {self.command[1]} {self.command[2]} PTT Conflict\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
-
-    def invalid_command_response(self):
-        message = f'FAIL: {self.command[0]} {self.command[1]} {self.command[2]} Invalid Command\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
-
-    def status_response(self):
-        message = self.status
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        message = message.replace('\n', ', ')
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
-
-    def molly_guard_response(self):
-        message = 'Re-enter the command within the next 20 seconds if you would like to proceed\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
-
-    def max_ptt_response(self):
-        message = f'Fail: {self.command[0]} {self.command[1]} {self.command[2]} Max PTT\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
-
-    def ptt_cooldown_response(self, seconds):
-        message = f'WARNING: Please wait {seconds} seconds and try again\n'
-        self.sock.sendto(message.encode('utf-8'), self.addr)
-        logging.debug(f'ADDRESS: {str(self.addr)}, {message.strip()}')
 
 
 class StationD:
@@ -682,7 +640,10 @@ class Success(Exception):
         self.command_obj = command_obj
 
     def send_response(self):
-        self.command_obj.success_response()
+        command = self.command_obj.command
+        message = f'SUCCESS: {command[0]} {command[1]} {command[2]}\n'
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 class No_Change(Exception):
@@ -690,15 +651,22 @@ class No_Change(Exception):
         self.command_obj = command_obj
 
     def send_response(self):
-        self.command_obj.no_change_response()
+        command = self.command_obj.command
+        message = f'WARNING: {command[0]} {command[1]} {command[2]} No Change\n'
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.command_obj.addr)}')
 
 
 class Status(Exception):
-    def __init__(self, command_obj):
+    def __init__(self, command_obj, status):
         self.command_obj = command_obj
+        self.status = status
 
     def send_response(self):
-        self.command_obj.status_response()
+        message = self.status
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        message = message.replace('\n', ', ')
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 class PTT_Conflict(Exception):
@@ -706,7 +674,10 @@ class PTT_Conflict(Exception):
         self.command_obj = command_obj
 
     def send_response(self):
-        self.command_obj.ptt_conflict_response()
+        command = self.command_obj.command
+        message = f'FAIL: {command[0]} {command[1]} {command[2]} PTT Conflict\n'
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 class Max_PTT(Exception):
@@ -714,7 +685,10 @@ class Max_PTT(Exception):
         self.command_obj = command_obj
 
     def send_response(self):
-        self.command_obj.max_ptt_response()
+        command = self.command_obj.command
+        message = f'Fail: {command[0]} {command[1]} {command[2]} Max PTT\n'
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 class PTT_Cooldown(Exception):
@@ -723,7 +697,9 @@ class PTT_Cooldown(Exception):
         self.seconds = seconds
 
     def send_response(self):
-        self.command_obj.ptt_cooldown_response(self.seconds)
+        message = f'WARNING: Please wait {self.seconds} seconds and try again\n'
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 class Invalid_Command(Exception):
@@ -731,7 +707,10 @@ class Invalid_Command(Exception):
         self.command_obj = command_obj
 
     def send_response(self):
-        self.command_obj.invalid_command_response()
+        command = self.command_obj.command
+        message = f'FAIL: {command[0]} {command[1]} {command[2]} Invalid Command\n'
+        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 if __name__ == "__main__":
