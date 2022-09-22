@@ -654,7 +654,7 @@ class No_Change(Exception):
         command = self.command_obj.command
         message = f'WARNING: {command[0]} {command[1]} {command[2]} No Change\n'
         self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        logging.debug(f'{str(datetime.now())} {message.strip()}, ADDRESS: {str(self.command_obj.addr)}')
+        logging.debug(f'ADDRESS: {str(self.command_obj.addr)}, {message.strip()}')
 
 
 class Status(Exception):
