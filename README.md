@@ -6,7 +6,10 @@ A power management Daemon for Uniclogs. Accepts network commands via UDP.
 
 StationD requires python 3.10 or later
 
-Install sysfs gpio library to program directory: ```$ git clone https://github.com/ctrlh/gpio.git```
+Install sysfs gpio library to program directory:
+```
+$ git clone -b 14-25-sysfs-permissions https://github.com/ctrlh/gpio.git
+```
 
 ## Usage
 
@@ -17,6 +20,11 @@ UDP_PORT = 5005
 ```
 
 To run the program: ```$ python3 stationd.py```
+
+Example UDP command using Netcat:
+```
+echo "vhf polarization status" | nc -u -w 1 127.0.0.1 5005
+```
 
 Command format: `````<Device> <Component> <State>`````
 

@@ -596,6 +596,7 @@ class StationD:
                     data = data.decode().strip('\n').strip('\r').split()
                     command_obj = Command(command=data, sock=self.sock, addr=client_address)
                     c_thread = threading.Thread(target=self.command_handler, args=(command_obj,))
+                    c_thread.daemon = True
                     c_thread.start()
                 except OSError as err:
                     print(err)
