@@ -314,9 +314,8 @@ class Accessory:
 
     def power_on(self, command_obj):
         # RX-Swap cannot happen while any PTT is active
-        if isinstance(self, RX_Swap):
-            if command_obj.num_active_ptt > 0:
-                raise PTT_Conflict(command_obj)
+        if isinstance(self, RX_Swap) and command_obj.num_active_ptt > 0:
+            raise PTT_Conflict(command_obj)
         if self.power.read() is ON:
             raise No_Change(command_obj)
 
@@ -325,9 +324,8 @@ class Accessory:
 
     def power_off(self, command_obj):
         # RX-Swap cannot happen while any PTT is active
-        if isinstance(self, RX_Swap):
-            if command_obj.num_active_ptt > 0:
-                raise PTT_Conflict(command_obj)
+        if isinstance(self, RX_Swap) and command_obj.num_active_ptt > 0:
+            raise PTT_Conflict(command_obj)
         if self.power.read() is OFF:
             raise No_Change(command_obj)
 
