@@ -53,12 +53,11 @@ PTT_MAX_COUNT = 1
 
 class Amplifier:
     def __init__(self):
-        self.name = None
-
-        self.dow_key = None
-        self.rf_ptt = None
-        self.pa_power = None
-        self.lna = None
+        self.name         = None
+        self.dow_key      = None
+        self.rf_ptt       = None
+        self.pa_power     = None
+        self.lna          = None
         self.polarization = None
 
         self.molly_guard_time = None
@@ -243,60 +242,36 @@ class Amplifier:
 class VHF(Amplifier):
     def __init__(self):
         super().__init__()
-        self.name = 'VHF'
-        # Dow-key
-        self.dow_key = gpio.GPIOPin(VHF_DOW_KEY, None, initial=None)
-        self.dow_key = assert_out(self.dow_key)
-        # PTT
-        self.rf_ptt = gpio.GPIOPin(VHF_RF_PTT, None, initial=None)
-        self.rf_ptt = assert_out(self.rf_ptt)
-        # TX
-        self.pa_power = gpio.GPIOPin(VHF_PA_POWER, None, initial=None)
-        self.pa_power = assert_out(self.pa_power)
-        # RX
-        self.lna = gpio.GPIOPin(VHF_LNA, None, initial=None)
-        self.lna = assert_out(self.lna)
-        # Polarization
-        self.polarization = gpio.GPIOPin(VHF_POLARIZATION, None, initial=None)
-        self.polarization = assert_out(self.polarization)
+        self.name         = 'VHF'
+        self.dow_key      = assert_out(gpio.GPIOPin(VHF_DOW_KEY, None, initial=None))
+        self.rf_ptt       = assert_out(gpio.GPIOPin(VHF_RF_PTT, None, initial=None))
+        self.pa_power     = assert_out(gpio.GPIOPin(VHF_PA_POWER, None, initial=None))
+        self.lna          = assert_out(gpio.GPIOPin(VHF_LNA, None, initial=None))
+        self.polarization = assert_out(gpio.GPIOPin(VHF_POLARIZATION, None, initial=None))
 
 
 class UHF(Amplifier):
     def __init__(self):
         super().__init__()
-        self.name = 'UHF'
-        # # Dow-key
-        # self.dow_key = gpio.GPIOPin(UHF_DOW_KEY, None, initial=None)
-        # self.dow_key = assert_out(self.dow_key)
-        # # PTT
-        # self.rf_ptt = gpio.GPIOPin(UHF_RF_PTT, None, initial=None)
-        # self.rf_ptt = assert_out(self.rf_ptt)
-        # # TX
-        # self.pa_power = gpio.GPIOPin(UHF_PA_POWER, None, initial=None)
-        # self.pa_power = assert_out(self.pa_power)
-        # # RX
-        # self.lna = gpio.GPIOPin(UHF_LNA, None, initial=None)
-        # self.lna = assert_out(self.lna)
-        # # Polarization
-        # self.polarization = gpio.GPIOPin(UHF_POLARIZATION, None, initial=None)
-        # self.polarization = assert_out(self.polarization)
+        self.name           = 'UHF'
+        # self.dow_key      = assert_out(gpio.GPIOPin(UHF_DOW_KEY, None, initial=None))
+        # self.rf_ptt       = assert_out(gpio.GPIOPin(UHF_RF_PTT, None, initial=None))
+        # self.pa_power     = assert_out(gpio.GPIOPin(UHF_PA_POWER, None, initial=None))
+        # self.lna          = assert_out(gpio.GPIOPin(UHF_LNA, None, initial=None))
+        # self.polarization = assert_out(gpio.GPIOPin(UHF_POLARIZATION, None, initial=None))
 
 
 class L_Band(Amplifier):
     def __init__(self):
         super().__init__()
-        self.name = 'L-Band'
-        # PTT
-        self.rf_ptt = gpio.GPIOPin(L_BAND_RF_PTT, None, initial=None)
-        self.rf_ptt = assert_out(self.rf_ptt)
-        # TX
-        self.pa_power = gpio.GPIOPin(L_BAND_PA_POWER, None, initial=None)
-        self.pa_power = assert_out(self.pa_power)
+        self.name     = 'L-Band'
+        self.rf_ptt   = assert_out(gpio.GPIOPin(L_BAND_RF_PTT, None, initial=None))
+        self.pa_power = assert_out(gpio.GPIOPin(L_BAND_PA_POWER, None, initial=None))
 
 
 class Accessory:
     def __init__(self):
-        self.name = None
+        self.name  = None
         self.power = None
 
     def device_status(self, command_obj):
@@ -338,37 +313,29 @@ class Accessory:
 class RX_Swap(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'RX-Swap'
-        # Power
-        self.power = gpio.GPIOPin(RX_SWAP_POWER, None, initial=None)
-        self.power = assert_out(self.power)
+        self.name  = 'RX-Swap'
+        self.power = assert_out(gpio.GPIOPin(RX_SWAP_POWER, None, initial=None))
 
 
 class SBC_Satnogs(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'SBC-Satnogs'
-        # Power
-        self.power = gpio.GPIOPin(SBC_SATNOGS_POWER, None, initial=None)
-        self.power = assert_out(self.power)
+        self.name  = 'SBC-Satnogs'
+        self.power = assert_out(gpio.GPIOPin(SBC_SATNOGS_POWER, None, initial=None))
 
 
 class SDR_Lime(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'SDR-Lime'
-        # Power
-        self.power = gpio.GPIOPin(SDR_LIME_POWER, None, initial=None)
-        self.power = assert_out(self.power)
+        self.name  = 'SDR-Lime'
+        self.power = assert_out(gpio.GPIOPin(SDR_LIME_POWER, None, initial=None))
 
 
 class Rotator(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'Rotator'
-        # Power
-        self.power = gpio.GPIOPin(ROTATOR_POWER, None, initial=None)
-        self.power = assert_out(self.power)
+        self.name  = 'Rotator'
+        self.power = assert_out(gpio.GPIOPin(ROTATOR_POWER, None, initial=None))
 
 
 class Command:
@@ -387,19 +354,18 @@ class StationD:
         self.socket_lock = threading.Lock()
 
         # Amplifiers
-        self.vhf = VHF()
-        self.uhf = UHF()
+        self.vhf    = VHF()
+        self.uhf    = UHF()
         self.l_band = L_Band()
 
         # Accessories
-        self.rx_swap = RX_Swap()
+        self.rx_swap     = RX_Swap()
         self.sbc_satnogs = SBC_Satnogs()
-        self.sdr_lime = SDR_Lime()
-        self.rotator = Rotator()
+        self.sdr_lime    = SDR_Lime()
+        self.rotator     = Rotator()
 
         # Shared dict
-        self.manager = Manager()
-        self.shared = self.manager.dict()
+        self.shared = Manager().dict()
         self.shared['num_active_ptt'] = 0
 
         logging.basicConfig(filename='activity.log',
