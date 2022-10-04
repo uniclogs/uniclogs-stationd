@@ -117,7 +117,6 @@ class Amplifier:
             raise PTT_Conflict(command_obj)
         if command_obj.num_active_ptt >= PTT_MAX_COUNT:
             raise Max_PTT(command_obj)
-
         # Enforce dow-key and ptt are same state
         if self.dow_key is not None:
             try:
@@ -343,25 +342,21 @@ class StationD:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(LISTENING_ADDRESS)
         self.socket_lock = threading.Lock()
-
         # Amplifiers
         self.vhf = VHF()
         self.uhf = UHF()
         self.l_band = L_Band()
-
         # Accessories
         self.rx_swap = RX_Swap()
         self.sbc_satnogs = SBC_Satnogs()
         self.sdr_lime = SDR_Lime()
         self.rotator = Rotator()
-
         # Temperature sensor
         self.pi_cpu = PersistFH(TEMP_PATH)
-
         # Shared dict
         self.shared = Manager().dict()
         self.shared['num_active_ptt'] = 0
-
+        # Logger
         logging.basicConfig(filename='activity.log',
                             format='%(asctime)s\t%(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S',
@@ -380,7 +375,7 @@ class StationD:
 
                 if device in ['vhf', 'uhf', 'l_band', 'rx_swap', 'sbc_satnogs', 'sdr_lime', 'rotator']:
                     command_parser(getattr(self, device), command_obj)
-                elif command_obj.command[0] == 'gettemp':
+                elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':
                     read_temp(command_obj, self.pi_cpu)
                 else:
                     raise Invalid_Command(command_obj)
