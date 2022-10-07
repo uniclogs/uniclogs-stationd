@@ -196,6 +196,7 @@ class Amplifier:
         if self.lna.read() is OFF:
             raise No_Change(command_obj)
         self.lna.write(OFF)
+        # only send response if called directly via command
         if command_obj.command[1] == 'lna':
             success_response(command_obj)
 
@@ -474,7 +475,7 @@ def status_response(command_obj, status):
 
 
 def temp_response(command_obj, temp):
-    message = f'{str(temp)}\n'
+    message = f'temp: {str(temp)}\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
