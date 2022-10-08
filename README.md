@@ -46,6 +46,9 @@ vhf polarization status
 
 # returns status for all components of UHF amplifier
 uhf status
+
+# get temperature of board
+gettemp
 ```
 
 Supported Commands:
@@ -59,6 +62,8 @@ l-band <pa-power|rf-ptt> <on|off|status>
 <rx-swap|sbc-satnogs|sdr-lime|rotator> power <on|off|status>
 
 <vhf|uhf|l-band|rx-swap|sbc-satnogs|sdr-lime|rotator> status
+
+gettemp
 ```
 
 
