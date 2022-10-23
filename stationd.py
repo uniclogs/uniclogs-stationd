@@ -15,10 +15,11 @@ import configparser
 import amplifier as amp
 import accessory as acc
 
-# Config
+# Config File
 config = configparser.ConfigParser()
 config.read('config.ini')
 
+# Constants
 ON = gpio.HIGH
 OFF = gpio.LOW
 LEFT = gpio.HIGH
@@ -90,24 +91,20 @@ class StationD:
 
                 if device in ['vhf', 'uhf', 'l_band', 'rx_swap', 'sbc_satnogs', 'sdr_lime', 'rotator']:
                     command_parser(getattr(self, device), command_obj)
+                    self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':
                     read_temp(command_obj, self.pi_cpu)
                 else:
                     raise Invalid_Command(command_obj)
             except PTT_Conflict:
-                self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 ptt_conflict_response(command_obj)
             except PTT_Cooldown as e:
-                self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 ptt_cooldown_response(command_obj, e.seconds)
             except Molly_Guard:
-                self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 molly_guard_response(command_obj)
             except Max_PTT:
-                self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 molly_guard_response(command_obj)
             except Invalid_Command:
-                self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 invalid_command_response(command_obj)
 
     def command_listener(self):
