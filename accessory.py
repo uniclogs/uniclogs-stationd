@@ -26,7 +26,8 @@ class Accessory:
         # RX-Swap cannot happen while any PTT is active
         self.rx_swap_ptt_check(command_obj)
         if self.power.read() is sd.ON:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         self.power.write(sd.ON)
         sd.success_response(command_obj)
 
@@ -34,7 +35,8 @@ class Accessory:
         # RX-Swap cannot happen while any PTT is active
         self.rx_swap_ptt_check(command_obj)
         if self.power.read() is sd.OFF:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         self.power.write(sd.OFF)
         sd.success_response(command_obj)
 

@@ -53,35 +53,31 @@ class Amplifier:
             self.molly_guard_time = None
             return True
 
-    def dow_key_on(self, command_obj):
+    def dow_key_on(self):
         if self.dow_key.read() is sd.ON:
-            raise sd.No_Change(command_obj)
+            return
         self.dow_key.write(sd.ON)
 
-    def dow_key_off(self, command_obj):
+    def dow_key_off(self):
         if self.dow_key.read() is sd.OFF:
-            raise sd.No_Change(command_obj)
+            return
         self.dow_key.write(sd.OFF)
 
     def rf_ptt_on(self, command_obj):
         if self.rf_ptt.read() is sd.ON:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         if self.pa_power.read() is sd.OFF:
             raise sd.PTT_Conflict(command_obj)
         if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
             raise sd.Max_PTT(command_obj)
         # Enforce dow-key and ptt are same state
         if self.dow_key is not None:
-            try:
-                self.dow_key_on(command_obj)
-            except sd.No_Change:
-                pass
+            self.dow_key_on()
+
         # Ptt command received, turn off LNA
         if self.lna is not None:
-            try:
-                self.lna_off(command_obj)
-            except sd.No_Change:
-                pass
+            self.lna_off(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
         self.rf_ptt.write(sd.ON)
@@ -90,7 +86,8 @@ class Amplifier:
 
     def rf_ptt_off(self, command_obj):
         if self.rf_ptt.read() is sd.OFF:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         self.rf_ptt.write(sd.OFF)
         sd.success_response(command_obj)
         #  set time ptt turned off
@@ -101,44 +98,38 @@ class Amplifier:
             command_obj.num_active_ptt = 0
         # Enforce dow-key and ptt are same state
         if self.dow_key is not None:
-            try:
-                self.dow_key_off(command_obj)
-            except sd.No_Change:
-                pass
+            self.dow_key_off()
 
     def pa_power_on(self, command_obj):
         if self.pa_power.read() is sd.ON:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         if self.molly_guard(command_obj):
             if self.dow_key is not None:
-                try:
-                    self.dow_key_on(command_obj)
-                except sd.No_Change:
-                    pass
+                self.dow_key_on()
             self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
 
     def pa_power_off(self, command_obj):
         if self.pa_power.read() is sd.OFF:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         if self.rf_ptt.read() is sd.ON:
             raise sd.PTT_Conflict(command_obj)
         #  Check PTT off for at least 2 minutes
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
         if diff_sec > sd.PTT_COOLDOWN:
             if self.dow_key is not None:
-                try:
-                    self.dow_key_off(command_obj)
-                except sd.No_Change:
-                    pass
+                self.dow_key_off()
             self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
         else:
-            raise sd.PTT_Cooldown(command_obj, round(sd.PTT_COOLDOWN - diff_sec))
+            raise sd.PTT_Cooldown(round(sd.PTT_COOLDOWN - diff_sec))
 
     def lna_on(self, command_obj):
         if self.lna.read() is sd.ON:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         #  Fail if PTT is on
         if self.rf_ptt.read() is sd.ON:
             raise sd.PTT_Conflict(command_obj)
@@ -147,7 +138,10 @@ class Amplifier:
 
     def lna_off(self, command_obj):
         if self.lna.read() is sd.OFF:
-            raise sd.No_Change(command_obj)
+            # only send response if called directly via command
+            if command_obj.command[1] == 'lna':
+                sd.no_change_response(command_obj)
+                return
         self.lna.write(sd.OFF)
         # only send response if called directly via command
         if command_obj.command[1] == 'lna':
@@ -155,7 +149,8 @@ class Amplifier:
 
     def polarization_left(self, command_obj):
         if self.polarization.read() is sd.LEFT:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         if self.rf_ptt.read() is sd.ON:
             raise sd.PTT_Conflict(command_obj)
         # brief cooldown
@@ -165,7 +160,8 @@ class Amplifier:
 
     def polarization_right(self, command_obj):
         if self.polarization.read() is sd.RIGHT:
-            raise sd.No_Change(command_obj)
+            sd.no_change_response(command_obj)
+            return
         if self.rf_ptt.read() is sd.ON:
             raise sd.PTT_Conflict(command_obj)
         # brief cooldown
