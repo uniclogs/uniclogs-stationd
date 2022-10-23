@@ -9,10 +9,11 @@ import threading
 import socket
 import logging
 from datetime import datetime
-import time
 from multiprocessing import Manager
 from gpio import gpio
 import configparser
+import amplifier as amp
+import accessory as acc
 
 # Config
 config = configparser.ConfigParser()
@@ -28,271 +29,6 @@ SLEEP_TIMER = 0.1
 PTT_MAX_COUNT = 1
 
 TEMP_PATH = '/sys/class/thermal/thermal_zone0/temp'
-
-
-class Amplifier:
-    def __init__(self):
-        self.name = None
-        self.dow_key = None
-        self.rf_ptt = None
-        self.pa_power = None
-        self.lna = None
-        self.polarization = None
-
-        self.molly_guard_time = None
-
-        # Shared data
-        self.manager = Manager()
-        self.shared = self.manager.dict()
-        self.shared['ptt_off_time'] = datetime.now()
-
-    def device_status(self, command_obj):
-        p_state = 'LEFT' if get_state(self.polarization) is LEFT else 'RIGHT'
-        status = f'{command_obj.command[0]} dow-key {get_state(self.dow_key)}\n' \
-                 f'{command_obj.command[0]} rf-ptt {get_state(self.rf_ptt)}\n' \
-                 f'{command_obj.command[0]} pa-power {get_state(self.pa_power)}\n' \
-                 f'{command_obj.command[0]} lna {get_state(self.lna)}\n' \
-                 f'{command_obj.command[0]} polarization {p_state}\n'
-        status_response(command_obj, status)
-
-    def component_status(self, command_obj):
-        try:
-            component = getattr(self, command_obj.command[1].replace('-', '_'))
-            if command_obj.command[1] == 'polarization':
-                p_state = 'LEFT' if get_state(self.polarization) is LEFT else 'RIGHT'
-                status = f'{command_obj.command[0]} {command_obj.command[1]} {p_state}\n'
-                status_response(command_obj, status)
-            else:
-                status = get_status(component, command_obj)
-                status_response(command_obj, status)
-        except AttributeError:
-            raise Invalid_Command(command_obj)
-
-    def molly_guard(self, command_obj):
-        diff_sec = calculate_diff_sec(self.molly_guard_time)
-        if diff_sec is None or diff_sec > 20:
-            self.molly_guard_time = datetime.now()
-            raise Molly_Guard(command_obj)
-        else:
-            # reset timer to none
-            self.molly_guard_time = None
-            return True
-
-    def dow_key_on(self, command_obj):
-        if self.dow_key.read() is ON:
-            raise No_Change(command_obj)
-        self.dow_key.write(ON)
-
-    def dow_key_off(self, command_obj):
-        if self.dow_key.read() is OFF:
-            raise No_Change(command_obj)
-        self.dow_key.write(OFF)
-
-    def rf_ptt_on(self, command_obj):
-        if self.rf_ptt.read() is ON:
-            raise No_Change(command_obj)
-        if self.pa_power.read() is OFF:
-            raise PTT_Conflict(command_obj)
-        if command_obj.num_active_ptt >= PTT_MAX_COUNT:
-            raise Max_PTT(command_obj)
-        # Enforce dow-key and ptt are same state
-        if self.dow_key is not None:
-            try:
-                self.dow_key_on(command_obj)
-            except No_Change:
-                pass
-        # Ptt command received, turn off LNA
-        if self.lna is not None:
-            try:
-                self.lna_off(command_obj)
-            except No_Change:
-                pass
-        # brief cooldown
-        time.sleep(SLEEP_TIMER)
-        self.rf_ptt.write(ON)
-        success_response(command_obj)
-        command_obj.num_active_ptt += 1
-
-    def rf_ptt_off(self, command_obj):
-        if self.rf_ptt.read() is OFF:
-            raise No_Change(command_obj)
-        self.rf_ptt.write(OFF)
-        success_response(command_obj)
-        #  set time ptt turned off
-        self.shared['ptt_off_time'] = datetime.now()
-        command_obj.num_active_ptt -= 1
-        # make sure num_active_ptt never falls below 0
-        if command_obj.num_active_ptt < 0:
-            command_obj.num_active_ptt = 0
-        # Enforce dow-key and ptt are same state
-        if self.dow_key is not None:
-            try:
-                self.dow_key_off(command_obj)
-            except No_Change:
-                pass
-
-    def pa_power_on(self, command_obj):
-        if self.pa_power.read() is ON:
-            raise No_Change(command_obj)
-        if self.molly_guard(command_obj):
-            if self.dow_key is not None:
-                try:
-                    self.dow_key_on(command_obj)
-                except No_Change:
-                    pass
-            self.pa_power.write(ON)
-            success_response(command_obj)
-
-    def pa_power_off(self, command_obj):
-        if self.pa_power.read() is OFF:
-            raise No_Change(command_obj)
-        if self.rf_ptt.read() is ON:
-            raise PTT_Conflict(command_obj)
-        #  Check PTT off for at least 2 minutes
-        diff_sec = calculate_diff_sec(self.shared['ptt_off_time'])
-        if diff_sec > PTT_COOLDOWN:
-            if self.dow_key is not None:
-                try:
-                    self.dow_key_off(command_obj)
-                except No_Change:
-                    pass
-            self.pa_power.write(OFF)
-            success_response(command_obj)
-        else:
-            raise PTT_Cooldown(command_obj, round(PTT_COOLDOWN - diff_sec))
-
-    def lna_on(self, command_obj):
-        if self.lna.read() is ON:
-            raise No_Change(command_obj)
-        #  Fail if PTT is on
-        if self.rf_ptt.read() is ON:
-            raise PTT_Conflict(command_obj)
-        self.lna.write(ON)
-        success_response(command_obj)
-
-    def lna_off(self, command_obj):
-        if self.lna.read() is OFF:
-            raise No_Change(command_obj)
-        self.lna.write(OFF)
-        # only send response if called directly via command
-        if command_obj.command[1] == 'lna':
-            success_response(command_obj)
-
-    def polarization_left(self, command_obj):
-        if self.polarization.read() is LEFT:
-            raise No_Change(command_obj)
-        if self.rf_ptt.read() is ON:
-            raise PTT_Conflict(command_obj)
-        # brief cooldown
-        time.sleep(SLEEP_TIMER)
-        self.polarization.write(LEFT)
-        success_response(command_obj)
-
-    def polarization_right(self, command_obj):
-        if self.polarization.read() is RIGHT:
-            raise No_Change(command_obj)
-        if self.rf_ptt.read() is ON:
-            raise PTT_Conflict(command_obj)
-        # brief cooldown
-        time.sleep(SLEEP_TIMER)
-        self.polarization.write(RIGHT)
-        success_response(command_obj)
-
-
-class VHF(Amplifier):
-    def __init__(self):
-        super().__init__()
-        self.name = 'VHF'
-        self.dow_key = assert_out(gpio.GPIOPin(int(config['VHF']['dow_key_pin']), None, initial=None))
-        self.rf_ptt = assert_out(gpio.GPIOPin(int(config['VHF']['rf_ptt_pin']), None, initial=None))
-        self.pa_power = assert_out(gpio.GPIOPin(int(config['VHF']['pa_power_pin']), None, initial=None))
-        self.lna = assert_out(gpio.GPIOPin(int(config['VHF']['lna_pin']), None, initial=None))
-        self.polarization = assert_out(gpio.GPIOPin(int(config['VHF']['polarization_pin']), None, initial=None))
-
-
-class UHF(Amplifier):
-    def __init__(self):
-        super().__init__()
-        self.name = 'UHF'
-        self.dow_key = assert_out(gpio.GPIOPin(int(config['UHF']['dow_key_pin']), None, initial=None))
-        self.rf_ptt = assert_out(gpio.GPIOPin(int(config['UHF']['rf_ptt_pin']), None, initial=None))
-        self.pa_power = assert_out(gpio.GPIOPin(int(config['UHF']['pa_power_pin']), None, initial=None))
-        self.lna = assert_out(gpio.GPIOPin(int(config['UHF']['lna_pin']), None, initial=None))
-        self.polarization = assert_out(gpio.GPIOPin(int(config['UHF']['polarization_pin']), None, initial=None))
-
-
-class L_Band(Amplifier):
-    def __init__(self):
-        super().__init__()
-        self.name = 'L-Band'
-        self.rf_ptt = assert_out(gpio.GPIOPin(int(config['L-BAND']['rf_ptt_pin']), None, initial=None))
-        self.pa_power = assert_out(gpio.GPIOPin(int(config['L-BAND']['pa_power_pin']), None, initial=None))
-
-
-class Accessory:
-    def __init__(self):
-        self.name = None
-        self.power = None
-
-    def device_status(self, command_obj):
-        status = f'{command_obj.command[0]} power {get_state(self.power)}\n'
-        status_response(command_obj, status)
-
-    def component_status(self, command_obj):
-        try:
-            component = getattr(self, command_obj.command[1].replace('-', '_'))
-            status = get_status(component, command_obj)
-            status_response(command_obj, status)
-        except AttributeError:
-            raise Invalid_Command(command_obj)
-
-    def rx_swap_ptt_check(self, command_obj):
-        if isinstance(self, RX_Swap) and command_obj.num_active_ptt > 0:
-            raise PTT_Conflict(command_obj)
-
-    def power_on(self, command_obj):
-        # RX-Swap cannot happen while any PTT is active
-        self.rx_swap_ptt_check(command_obj)
-        if self.power.read() is ON:
-            raise No_Change(command_obj)
-        self.power.write(ON)
-        success_response(command_obj)
-
-    def power_off(self, command_obj):
-        # RX-Swap cannot happen while any PTT is active
-        self.rx_swap_ptt_check(command_obj)
-        if self.power.read() is OFF:
-            raise No_Change(command_obj)
-        self.power.write(OFF)
-        success_response(command_obj)
-
-
-class RX_Swap(Accessory):
-    def __init__(self):
-        super().__init__()
-        self.name = 'RX-Swap'
-        self.power = assert_out(gpio.GPIOPin(int(config['RX-SWAP']['power_pin']), None, initial=None))
-
-
-class SBC_Satnogs(Accessory):
-    def __init__(self):
-        super().__init__()
-        self.name = 'SBC-Satnogs'
-        self.power = assert_out(gpio.GPIOPin(int(config['SBC-SATNOGS']['power_pin']), None, initial=None))
-
-
-class SDR_Lime(Accessory):
-    def __init__(self):
-        super().__init__()
-        self.name = 'SDR-Lime'
-        self.power = assert_out(gpio.GPIOPin(int(config['SDR-LIME']['power_pin']), None, initial=None))
-
-
-class Rotator(Accessory):
-    def __init__(self):
-        super().__init__()
-        self.name = 'Rotator'
-        self.power = assert_out(gpio.GPIOPin(int(config['ROTATOR']['power_pin']), None, initial=None))
 
 
 class Command:
@@ -322,14 +58,14 @@ class StationD:
         self.sock.bind((config['NETWORK']['udp_ip'], int(config['NETWORK']['udp_port'])))
         self.socket_lock = threading.Lock()
         # Amplifiers
-        self.vhf = VHF()
-        self.uhf = UHF()
-        self.l_band = L_Band()
+        self.vhf = amp.VHF()
+        self.uhf = amp.UHF()
+        self.l_band = amp.L_Band()
         # Accessories
-        self.rx_swap = RX_Swap()
-        self.sbc_satnogs = SBC_Satnogs()
-        self.sdr_lime = SDR_Lime()
-        self.rotator = Rotator()
+        self.rx_swap = acc.RX_Swap()
+        self.sbc_satnogs = acc.SBC_Satnogs()
+        self.sdr_lime = acc.SDR_Lime()
+        self.rotator = acc.Rotator()
         # Temperature sensor
         self.pi_cpu = PersistFH(TEMP_PATH)
         # Shared dict
@@ -358,9 +94,21 @@ class StationD:
                     read_temp(command_obj, self.pi_cpu)
                 else:
                     raise Invalid_Command(command_obj)
-            except (No_Change, PTT_Conflict, PTT_Cooldown, Molly_Guard, Max_PTT, Invalid_Command) as e:
+            except PTT_Conflict:
                 self.shared['num_active_ptt'] = command_obj.num_active_ptt
-                e.send_response()
+                ptt_conflict_response(command_obj)
+            except PTT_Cooldown as e:
+                self.shared['num_active_ptt'] = command_obj.num_active_ptt
+                ptt_cooldown_response(command_obj, e.seconds)
+            except Molly_Guard:
+                self.shared['num_active_ptt'] = command_obj.num_active_ptt
+                molly_guard_response(command_obj)
+            except Max_PTT:
+                self.shared['num_active_ptt'] = command_obj.num_active_ptt
+                molly_guard_response(command_obj)
+            except Invalid_Command:
+                self.shared['num_active_ptt'] = command_obj.num_active_ptt
+                invalid_command_response(command_obj)
 
     def command_listener(self):
         try:
@@ -438,9 +186,49 @@ def assert_out(gpiopin):
     return gpiopin
 
 
+# Response Handling
 def success_response(command_obj):
     command = command_obj.command
     message = f'SUCCESS: {command[0]} {command[1]} {command[2]}\n'
+    command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
+    log(command_obj, message)
+
+
+def no_change_response(command_obj):
+    command = command_obj.command
+    message = f'WARNING: {command[0]} {command[1]} {command[2]} No Change\n'
+    command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
+    log(command_obj, message)
+
+
+def molly_guard_response(command_obj):
+    message = 'Re-enter the command within the next 20 seconds if you would like to proceed\n'
+    command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
+    log(command_obj, message)
+
+
+def ptt_conflict_response(command_obj):
+    command = command_obj.command
+    message = f'FAIL: {command[0]} {command[1]} {command[2]} PTT Conflict\n'
+    command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
+    log(command_obj, message)
+
+
+def max_ptt_response(command_obj):
+    command = command_obj.command
+    message = f'Fail: {command[0]} {command[1]} {command[2]} Max PTT\n'
+    command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
+    log(command_obj, message)
+
+
+def ptt_cooldown_response(command_obj, seconds):
+    message = f'WARNING: Please wait {seconds} seconds and try again\n'
+    command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
+    log(command_obj, message)
+
+
+def invalid_command_response(command_obj):
+    message = f'FAIL: Invalid Command\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
@@ -459,74 +247,22 @@ def temp_response(command_obj, temp):
 
 
 # Exceptions
-class No_Change(Exception):
-    def __init__(self, command_obj):
-        self.command_obj = command_obj
-
-    def send_response(self):
-        command = self.command_obj.command
-        message = f'WARNING: {command[0]} {command[1]} {command[2]} No Change\n'
-        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        log(self.command_obj, message)
-
-
 class Molly_Guard(Exception):
-    def __init__(self, command_obj):
-        self.command_obj = command_obj
-
-    def send_response(self):
-        message = 'Re-enter the command within the next 20 seconds if you would like to proceed\n'
-        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        log(self.command_obj, message)
+    pass
 
 
 class PTT_Conflict(Exception):
-    def __init__(self, command_obj):
-        self.command_obj = command_obj
-
-    def send_response(self):
-        command = self.command_obj.command
-        message = f'FAIL: {command[0]} {command[1]} {command[2]} PTT Conflict\n'
-        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        log(self.command_obj, message)
+    pass
 
 
 class Max_PTT(Exception):
-    def __init__(self, command_obj):
-        self.command_obj = command_obj
-
-    def send_response(self):
-        command = self.command_obj.command
-        message = f'Fail: {command[0]} {command[1]} {command[2]} Max PTT\n'
-        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        log(self.command_obj, message)
+    pass
 
 
 class PTT_Cooldown(Exception):
-    def __init__(self, command_obj, seconds):
-        self.command_obj = command_obj
+    def __init__(self, seconds):
         self.seconds = seconds
-
-    def send_response(self):
-        message = f'WARNING: Please wait {self.seconds} seconds and try again\n'
-        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        log(self.command_obj, message)
 
 
 class Invalid_Command(Exception):
-    def __init__(self, command_obj):
-        self.command_obj = command_obj
-
-    def send_response(self):
-        message = f'FAIL: Invalid Command\n'
-        self.command_obj.sock.sendto(message.encode('utf-8'), self.command_obj.addr)
-        log(self.command_obj, message)
-
-
-if __name__ == "__main__":
-    print('===============================')
-    print('Station Daemon Power Management')
-    print('===============================')
-
-    sd = StationD()
-    sd.command_listener()
+    pass
