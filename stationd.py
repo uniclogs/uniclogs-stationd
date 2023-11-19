@@ -29,7 +29,8 @@ PTT_COOLDOWN = 120          # In seconds
 SLEEP_TIMER = 0.1
 PTT_MAX_COUNT = 1
 
-TEMP_PATH = '/sys/class/thermal/thermal_zone0/temp'
+#TEMP_PATH = '/sys/class/thermal/thermal_zone0/temp'    # Raspberry Pi CPU temperature
+TEMP_PATH = '/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input'    # UniClOGS UPB sensor
 
 
 class Command:
