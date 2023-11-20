@@ -1,0 +1,22 @@
+###
+# UniClOGS Power Board
+###
+
+# ADT7410 Temperature Sensor
+#dtoverlay=i2c-sensor,jc42,addr=0x4A
+
+# ADS1115 ADC
+dtoverlay=ads1115
+
+# MAX7310 IO Expanders
+dtoverlay=pca953x,max7310,addr=0x20
+dtoverlay=pca953x,max7310,addr=0x21
+dtoverlay=pca953x,max7310,addr=0x22
+
+# Additional UARTs
+enable_uart=1
+dtoverlay=uart2
+dtoverlay=uart3
+dtoverlay=uart4
+dtoverlay=uart5
+
