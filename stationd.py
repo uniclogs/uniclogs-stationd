@@ -64,9 +64,9 @@ class StationD:
         self.uhf = amp.UHF()
         self.l_band = amp.L_Band()
         # Accessories
-        self.rx_swap = acc.RX_Swap()
-        self.sbc_satnogs = acc.SBC_Satnogs()
-        self.sdr_lime = acc.SDR_Lime()
+        self.vu_tx_relay = acc.VU_TX_Relay()
+        self.satnogs_host = acc.Satnogs_Host()
+        self.radio_host = acc.Radio_Host()
         self.rotator = acc.Rotator()
         # Temperature sensor
         self.pi_cpu = PersistFH(TEMP_PATH)
@@ -90,7 +90,7 @@ class StationD:
                 device = command_obj.command[0].replace('-', '_')
                 command_obj.num_active_ptt = self.shared['num_active_ptt']
 
-                if device in ['vhf', 'uhf', 'l_band', 'rx_swap', 'sbc_satnogs', 'sdr_lime', 'rotator']:
+                if device in ['vhf', 'uhf', 'l_band', 'vu_tx_relay', 'satnogs_host', 'radio_host', 'rotator']:
                     command_parser(getattr(self, device), command_obj)
                     self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':

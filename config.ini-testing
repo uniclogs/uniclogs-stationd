@@ -3,14 +3,14 @@ udp_ip = 127.0.0.1
 udp_port = 5005
 
 [VHF]
-dow_key_pin = 17
+tr_relay_pin = 17
 rf_ptt_pin = 18
 pa_power_pin = 27
 lna_pin = 22
 polarization_pin = 23
 
 [UHF]
-dow_key_pin = 12
+tr_relay_pin = 12
 rf_ptt_pin = 13
 pa_power_pin = 19
 lna_pin = 16
@@ -20,13 +20,13 @@ polarization_pin = 26
 rf_ptt_pin = 24
 pa_power_pin = 25
 
-[RX-SWAP]
+[VU-TX-RELAY]
 power_pin = 11
 
-[SBC-SATNOGS]
+[SATNOGS-HOST]
 power_pin = 8
 
-[SDR-LIME]
+[RADIO-HOST]
 power_pin = 2
 
 [ROTATOR]

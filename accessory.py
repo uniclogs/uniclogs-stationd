@@ -18,13 +18,13 @@ class Accessory:
         except AttributeError:
             raise sd.Invalid_Command(command_obj)
 
-    def rx_swap_ptt_check(self, command_obj):
-        if isinstance(self, RX_Swap) and command_obj.num_active_ptt > 0:
+    def vu_tx_relay_ptt_check(self, command_obj):
+        if isinstance(self, VU_TX_Relay) and command_obj.num_active_ptt > 0:
             raise sd.PTT_Conflict(command_obj)
 
     def power_on(self, command_obj):
-        # RX-Swap cannot happen while any PTT is active
-        self.rx_swap_ptt_check(command_obj)
+        # VU TX Relay change cannot happen while any PTT is active
+        self.vu_tx_relay_ptt_check(command_obj)
         if self.power.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
@@ -32,8 +32,8 @@ class Accessory:
         sd.success_response(command_obj)
 
     def power_off(self, command_obj):
-        # RX-Swap cannot happen while any PTT is active
-        self.rx_swap_ptt_check(command_obj)
+        # VU TX Relay change cannot happen while any PTT is active
+        self.vu_tx_relay_ptt_check(command_obj)
         if self.power.read() is sd.OFF:
             sd.no_change_response(command_obj)
             return
@@ -41,25 +41,25 @@ class Accessory:
         sd.success_response(command_obj)
 
 
-class RX_Swap(Accessory):
+class VU_TX_Relay(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'RX-Swap'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['RX-SWAP']['power_pin']), None, initial=None))
+        self.name = 'VU-TX-Relay'
+        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['VU-TX-RELAY']['power_pin']), None, initial=None))
 
 
-class SBC_Satnogs(Accessory):
+class Satnogs_Host(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'SBC-Satnogs'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['SBC-SATNOGS']['power_pin']), None, initial=None))
+        self.name = 'Satnogs-Host'
+        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['SATNOGS-HOST']['power_pin']), None, initial=None))
 
 
-class SDR_Lime(Accessory):
+class Radio_Host(Accessory):
     def __init__(self):
         super().__init__()
-        self.name = 'SDR-Lime'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['SDR-LIME']['power_pin']), None, initial=None))
+        self.name = 'Radio-Host'
+        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['RADIO-HOST']['power_pin']), None, initial=None))
 
 
 class Rotator(Accessory):

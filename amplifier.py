@@ -8,7 +8,7 @@ import stationd as sd
 class Amplifier:
     def __init__(self):
         self.name = None
-        self.dow_key = None
+        self.tr_relay = None
         self.rf_ptt = None
         self.pa_power = None
         self.lna = None
@@ -23,7 +23,7 @@ class Amplifier:
 
     def device_status(self, command_obj):
         p_state = 'LEFT' if sd.get_state(self.polarization) is sd.LEFT else 'RIGHT'
-        status = f'{command_obj.command[0]} dow-key {sd.get_state(self.dow_key)}\n' \
+        status = f'{command_obj.command[0]} dow-key {sd.get_state(self.tr_relay)}\n' \
                  f'{command_obj.command[0]} rf-ptt {sd.get_state(self.rf_ptt)}\n' \
                  f'{command_obj.command[0]} pa-power {sd.get_state(self.pa_power)}\n' \
                  f'{command_obj.command[0]} lna {sd.get_state(self.lna)}\n' \
@@ -53,15 +53,15 @@ class Amplifier:
             self.molly_guard_time = None
             return True
 
-    def dow_key_on(self):
-        if self.dow_key.read() is sd.ON:
+    def tr_relay_on(self):
+        if self.tr_relay.read() is sd.ON:
             return
-        self.dow_key.write(sd.ON)
+        self.tr_relay.write(sd.ON)
 
-    def dow_key_off(self):
-        if self.dow_key.read() is sd.OFF:
+    def tr_relay_off(self):
+        if self.tr_relay.read() is sd.OFF:
             return
-        self.dow_key.write(sd.OFF)
+        self.tr_relay.write(sd.OFF)
 
     def rf_ptt_on(self, command_obj):
         if self.rf_ptt.read() is sd.ON:
@@ -72,8 +72,8 @@ class Amplifier:
         if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
             raise sd.Max_PTT(command_obj)
         # Enforce dow-key and ptt are same state
-        if self.dow_key is not None:
-            self.dow_key_on()
+        if self.tr_relay is not None:
+            self.tr_relay_on()
 
         # Ptt command received, turn off LNA
         if self.lna is not None:
@@ -97,16 +97,16 @@ class Amplifier:
         if command_obj.num_active_ptt < 0:
             command_obj.num_active_ptt = 0
         # Enforce dow-key and ptt are same state
-        if self.dow_key is not None:
-            self.dow_key_off()
+        if self.tr_relay is not None:
+            self.tr_relay_off()
 
     def pa_power_on(self, command_obj):
         if self.pa_power.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
         if self.molly_guard(command_obj):
-            if self.dow_key is not None:
-                self.dow_key_on()
+            if self.tr_relay is not None:
+                self.tr_relay_on()
             self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
 
@@ -119,8 +119,8 @@ class Amplifier:
         #  Check PTT off for at least 2 minutes
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
         if diff_sec > sd.PTT_COOLDOWN:
-            if self.dow_key is not None:
-                self.dow_key_off()
+            if self.tr_relay is not None:
+                self.tr_relay_off()
             self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
         else:
@@ -174,7 +174,7 @@ class VHF(Amplifier):
     def __init__(self):
         super().__init__()
         self.name = 'VHF'
-        self.dow_key = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['dow_key_pin']), None, initial=None))
+        self.tr_relay = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['tr_relay_pin']), None, initial=None))
         self.rf_ptt = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['rf_ptt_pin']), None, initial=None))
         self.pa_power = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['pa_power_pin']), None, initial=None))
         self.lna = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['lna_pin']), None, initial=None))
@@ -185,7 +185,7 @@ class UHF(Amplifier):
     def __init__(self):
         super().__init__()
         self.name = 'UHF'
-        self.dow_key = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['dow_key_pin']), None, initial=None))
+        self.tr_relay = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['tr_relay_pin']), None, initial=None))
         self.rf_ptt = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['rf_ptt_pin']), None, initial=None))
         self.pa_power = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['pa_power_pin']), None, initial=None))
         self.lna = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['lna_pin']), None, initial=None))

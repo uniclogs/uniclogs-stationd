@@ -1,0 +1,33 @@
+[NETWORK]
+udp_ip = 127.0.0.1
+udp_port = 5005
+
+[VHF]
+tr_relay_pin = 490
+rf_ptt_pin = 485
+pa_power_pin = 478
+lna_pin = 496
+polarization_pin = 497
+
+[UHF]
+tr_relay_pin = 491
+rf_ptt_pin = 486
+pa_power_pin = 479
+lna_pin = 498
+polarization_pin = 499
+
+[L-BAND]
+rf_ptt_pin = 487
+pa_power_pin = 480
+
+[VU-TX-RELAY]
+power_pin = 489
+
+[SATNOGS-HOST]
+power_pin = 483
+
+[RADIO-HOST]
+power_pin = 482
+
+[ROTATOR]
+power_pin = 481
