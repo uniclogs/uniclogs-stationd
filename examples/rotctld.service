@@ -1,0 +1,14 @@
+# Be sure to replace tty_FTDI_xxxxxxxx with YOUR serial number!
+# Try `ls /dev/tty_FTDI_*` for a list of potentials
+
+[Unit]
+Description=Rotator Control Daemon
+StopWhenUnneeded=true
+ReloadPropagatedFrom=dev-tty_FTDI_xxxxxxxx.device
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/rotctld --model=901 --rot-file=/dev/tty_FTDI_xxxxxxxx --serial-speed=600 --set-conf=min_az=0 --set-conf=max_az=450 --set-conf=min_el=0 --set-conf=max_el=180
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+SUBSYSTEM=="tty",SUBSYSTEMS=="usb",DRIVERS=="usb",SYMLINK+="tty_%s{manufacturer}_%s{serial}"
+
+# Restart HamLib rotctld when the rotator controller is connected
+# Be sure to change the serial number from xxxxxxxx to your serial number!
+# Try `ls /dev/tty_FTDI_*` for a list of potentials
+SUBSYSTEM=="tty",SUBSYSTEMS=="usb",DRIVERS=="usb",ACTION=="add",ATTRS{product}=="FT232R USB UART",ATTRS{serial}=="xxxxxxxx",TAG+="systemd",ENV{SYSTEMD_WANTS}="rotctld.service",RUN+="/usr/bin/systemctl restart rotctld"
