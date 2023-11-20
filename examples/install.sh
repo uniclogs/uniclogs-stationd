@@ -19,7 +19,7 @@ else
 fi
 
 cat append-to-boot-config.txt >> /boot/firmware/config.txt
-mkdir ~/bin
+mkdir -p ~/bin
 cp -t ~/bin stationc.sh gpio-scan.sh adc-scan.sh get-temp.sh park-rotator.sh
 cp -t /etc/udev/rules.d/ 99-serial.rules
 
