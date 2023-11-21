@@ -18,6 +18,7 @@ else
 	    "/etc/systemd/system/rotctld.service"
 fi
 
+raspi-config nonint do_i2c 0
 cat append-to-boot-config.txt >> /boot/firmware/config.txt
 mkdir -p ~/bin
 cp -t ~/bin stationc.sh gpio-scan.sh adc-scan.sh get-temp.sh park-rotator.sh
