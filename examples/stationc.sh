@@ -1,7 +1,7 @@
 #!/bin/sh
 
 help() {
-    echo -e "Available commands: gettemp, l-band pa-power on, l-band rf-ptt on, uhf polarization left, vhf status, rotator power on, vu-tx-relay power on ...\n"
+    echo "Available commands: gettemp, l-band pa-power on, l-band rf-ptt on, uhf polarization left, vhf status, rotator power on, vu-tx-relay power on ...\n"
 }
 host=127.0.0.1
 
