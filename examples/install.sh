@@ -25,7 +25,7 @@ cp -t ~/bin stationc.sh gpio-scan.sh adc-scan.sh get-temp.sh park-rotator.sh
 cp -t /etc/udev/rules.d/ 99-serial.rules
 
 cp -t /etc/systemd/system/ rotctld.service stationd.service
-systemctl enable now rotctld.service stationd.service
+systemctl enable rotctld.service stationd.service
 
 if [ ! -f ../config.ini ]; then
     cp config.ini-UPB ../config.ini
