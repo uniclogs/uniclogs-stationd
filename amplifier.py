@@ -23,7 +23,7 @@ class Amplifier:
 
     def device_status(self, command_obj):
         p_state = 'LEFT' if sd.get_state(self.polarization) is sd.LEFT else 'RIGHT'
-        status = f'{command_obj.command[0]} dow-key {sd.get_state(self.tr_relay)}\n' \
+        status = f'{command_obj.command[0]} tr-relay {sd.get_state(self.tr_relay)}\n' \
                  f'{command_obj.command[0]} rf-ptt {sd.get_state(self.rf_ptt)}\n' \
                  f'{command_obj.command[0]} pa-power {sd.get_state(self.pa_power)}\n' \
                  f'{command_obj.command[0]} lna {sd.get_state(self.lna)}\n' \
@@ -71,7 +71,7 @@ class Amplifier:
             raise sd.PTT_Conflict(command_obj)
         if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
             raise sd.Max_PTT(command_obj)
-        # Enforce dow-key and ptt are same state
+        # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
             self.tr_relay_on()
 
@@ -96,7 +96,7 @@ class Amplifier:
         # make sure num_active_ptt never falls below 0
         if command_obj.num_active_ptt < 0:
             command_obj.num_active_ptt = 0
-        # Enforce dow-key and ptt are same state
+        # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
             self.tr_relay_off()
 
