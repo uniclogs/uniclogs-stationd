@@ -53,12 +53,12 @@ class Amplifier:
             self.molly_guard_time = None
             return True
 
-    def tr_relay_on(self):
+    def tr_relay_on(self, command_obj):
         if self.tr_relay.read() is sd.ON:
             return
         self.tr_relay.write(sd.ON)
 
-    def tr_relay_off(self):
+    def tr_relay_off(self, command_obj):
         if self.tr_relay.read() is sd.OFF:
             return
         self.tr_relay.write(sd.OFF)
