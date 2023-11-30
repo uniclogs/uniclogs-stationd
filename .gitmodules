@@ -1,0 +1,4 @@
+[submodule "gpio"]
+	path = gpio
+	url = https://github.com/ctrlh/gpio.git
+	branch = 14-25-sysfs-permissions
