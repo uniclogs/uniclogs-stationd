@@ -5,12 +5,12 @@ Wants=time-sync.target
 
 [Service]
 Restart=always
-User=admin
-Group=admin
-WorkingDirectory=/home/admin/uniclogs-stationd/
-ExecStart=/usr/bin/python /home/admin/uniclogs-stationd/
+User=uniclogs
+Group=uniclogs
+WorkingDirectory=/home/uniclogs/uniclogs-stationd/
+ExecStart=/usr/bin/python /home/uniclogs/uniclogs-stationd/
 ExecStartPost=/usr/bin/sleep 5
-ExecStartPost=/home/admin/bin/stationc.sh "radio-host power on" "rotator power on"
+ExecStartPost=/home/uniclogs/bin/stationc.sh "radio-host power on" "rotator power on"
 ExecStartPost=/usr/bin/sleep 30
 
 [Install]
