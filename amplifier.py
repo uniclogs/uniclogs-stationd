@@ -22,7 +22,7 @@ class Amplifier:
         self.shared['ptt_off_time'] = datetime.now()
 
     def device_status(self, command_obj):
-        p_state = 'LEFT' if sd.get_state(self.polarization) is sd.LEFT else 'RIGHT'
+        p_state = 'LEFT' if sd.get_state(self.polarization) is 'ON' else 'RIGHT'
         status = f'{command_obj.command[0]} tr-relay {sd.get_state(self.tr_relay)}\n' \
                  f'{command_obj.command[0]} rf-ptt {sd.get_state(self.rf_ptt)}\n' \
                  f'{command_obj.command[0]} pa-power {sd.get_state(self.pa_power)}\n' \
@@ -34,7 +34,7 @@ class Amplifier:
         try:
             component = getattr(self, command_obj.command[1].replace('-', '_'))
             if command_obj.command[1] == 'polarization':
-                p_state = 'LEFT' if sd.get_state(self.polarization) is sd.LEFT else 'RIGHT'
+                p_state = 'LEFT' if sd.get_state(self.polarization) is 'ON' else 'RIGHT'
                 status = f'{command_obj.command[0]} {command_obj.command[1]} {p_state}\n'
                 sd.status_response(command_obj, status)
             else:
