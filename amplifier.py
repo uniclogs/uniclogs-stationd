@@ -73,7 +73,7 @@ class Amplifier:
             raise sd.Max_PTT(command_obj)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
-            self.tr_relay_on()
+            self.tr_relay_on(command_obj)
 
         # Ptt command received, turn off LNA
         if self.lna is not None:
@@ -98,7 +98,7 @@ class Amplifier:
             command_obj.num_active_ptt = 0
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
-            self.tr_relay_off()
+            self.tr_relay_off(command_obj)
 
     def pa_power_on(self, command_obj):
         if self.pa_power.read() is sd.ON:
@@ -106,7 +106,7 @@ class Amplifier:
             return
         if self.molly_guard(command_obj):
             if self.tr_relay is not None:
-                self.tr_relay_on()
+                self.tr_relay_on(command_obj)
             self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
 
@@ -120,7 +120,7 @@ class Amplifier:
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
         if diff_sec > sd.PTT_COOLDOWN:
             if self.tr_relay is not None:
-                self.tr_relay_off()
+                self.tr_relay_off(command_obj)
             self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
         else:
