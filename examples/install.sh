@@ -28,6 +28,9 @@ cp -t /etc/udev/rules.d/ 99-serial.rules
 cp -t /etc/systemd/system/ rotctld.service stationd.service
 systemctl enable rotctld.service stationd.service
 
+# Enable the system watchdog
+echo RuntimeWatchdogSec=5 >> /etc/systemd/system.conf
+
 if [ ! -f ../config.ini ]; then
     cp config.ini-UPB ../config.ini
 fi
