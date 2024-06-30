@@ -63,6 +63,8 @@ l-band <pa-power|rf-ptt> <on|off|status>
 
 <vhf|uhf|l-band|rx-swap|sbc-satnogs|sdr-lime|rotator> status
 
+rotator
+
 gettemp
 ```
 
