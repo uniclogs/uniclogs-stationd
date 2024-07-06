@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [[ ${EUID} -ne 0 ]]; then
     echo " !!! This tool must be run as root"
