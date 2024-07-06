@@ -8,7 +8,7 @@ host=127.0.0.1
 case "$1" in
     "") exec nc.openbsd -uw1 $host 5005 ;;
     "help") help ;;
-    "status") set -- "gettemp" "vhf status" "uhf status" "l-band status" "vu-tx-relay status" "rotator status" "radio-host status" "sbr-b200 status" "satnogs-host status" ;&
+    "status") set -- "gettemp" "vhf status" "uhf status" "l-band status" "vu-tx-relay status" "rotator status" "radio-host status" "sdr-b200 status" "satnogs-host status" ;&
     *)
 	while [ -n "$1" ]; do
 	    echo "$1"
