@@ -59,9 +59,9 @@ Supported Commands:
 
 l-band <pa-power|rf-ptt> <on|off|status>
 
-<rx-swap|sbc-satnogs|sdr-lime|rotator> power <on|off|status>
+<rx-swap|sbc-satnogs|sdr-b200|rotator> power <on|off|status>
 
-<vhf|uhf|l-band|rx-swap|sbc-satnogs|sdr-lime|rotator> status
+<vhf|uhf|l-band|rx-swap|sbc-satnogs|sdr-b200|rotator> status
 
 rotator
 

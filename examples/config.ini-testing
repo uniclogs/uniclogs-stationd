@@ -31,3 +31,6 @@ power_pin = 2
 
 [ROTATOR]
 power_pin = 6
+
+[SDR-B200]
+power_pin = 3

@@ -67,3 +67,10 @@ class Rotator(Accessory):
         super().__init__()
         self.name = 'Rotator'
         self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['ROTATOR']['power_pin']), None, initial=None))
+
+
+class SDR_B200(Accessory):
+    def __init__(self):
+        super().__init__()
+        self.name = 'SDR-B200'
+        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['SDR-B200']['power_pin']), None, initial=None))
