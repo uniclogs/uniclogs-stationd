@@ -21,8 +21,6 @@ dev = [
     "sphinx",
     "pytest>=8.4.0",
     "pytest-cov>=6.2.0",
-    "pytest-mock>=3.10.0",
-    "mock>=5.2.0",
 ]
 
 [tool.pytest.ini_options]
@@ -30,10 +28,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-norecursedirs = ["gpio", "examples", ".venv", "__pycache__", "htmlcov", ".git"]
+norecursedirs = [".git", ".venv", "__pycache__", "examples", "gpio", "htmlcov"]
 addopts = [
-    "--verbose",
-    "--tb=short",
     "--cov=.",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov"
@@ -42,12 +38,7 @@ addopts = [
 [tool.coverage.run]
 source = ["."]
 omit = [
-    "gpio/*",
-    "examples/*",
-    "__pycache__/*",
-    "tests/*",
-    ".venv/*",
-    "htmlcov/*"
+    ".venv/*", "__pycache__/*", "examples/*", "gpio/*", "htmlcov/*", "tests/*"
 ]
 
 [tool.flake8]

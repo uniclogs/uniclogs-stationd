@@ -77,7 +77,7 @@ This project uses [pytest](https://docs.pytest.org/en/stable/) as it's testing
 framework. Run tests with the following command:
 
 ```sh
-python -m pytest tests/
+pytest
 ```
 
 A coverage report will be generated in the root of this project under
