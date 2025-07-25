@@ -5,19 +5,22 @@ License: GPL 3.0
 
 StationD Power management
 """
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from gpio import gpio
 import threading
 import socket
 import logging
 from datetime import datetime
 from multiprocessing import Manager
-from gpio import gpio
 import configparser
 import amplifier as amp
 import accessory as acc
 
 # Config File
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('../config.ini')
 
 # Constants
 ON = gpio.HIGH

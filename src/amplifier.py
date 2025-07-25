@@ -1,6 +1,9 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from gpio import gpio
 from multiprocessing import Manager
 from datetime import datetime
-from gpio import gpio
 import time
 import stationd as sd
 
