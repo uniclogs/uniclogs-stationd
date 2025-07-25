@@ -1,4 +1,4 @@
-import stationd
+from . import stationd
 
 if __name__ == "__main__":
     print('===============================')

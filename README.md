@@ -24,7 +24,11 @@ UDP_IP = '127.0.0.1'
 UDP_PORT = 5005
 ```
 
-To run the program: ```$ python3 stationd.py```
+To run the program:
+
+```sh
+python3 -m stationd
+```
 
 Example UDP command using Netcat:
 ```
