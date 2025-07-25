@@ -1,4 +1,4 @@
-[submodule "gpio"]
+[submodule "src/stationd/gpio"]
 	path = src/stationd/gpio
 	url = https://github.com/ctrlh/gpio.git
 	branch = 14-25-sysfs-permissions
