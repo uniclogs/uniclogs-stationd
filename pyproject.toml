@@ -33,5 +33,5 @@ addopts = [
 [tool.coverage.run]
 source = ["."]
 omit = [
-    ".venv/*", "__pycache__/*", "examples/*", "gpio/*", "htmlcov/*", "tests/*"
+    "gpio/*", "tests/*"
 ]
