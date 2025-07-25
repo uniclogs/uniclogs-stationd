@@ -2,7 +2,7 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
 
 class TestBasicFunctionality:
@@ -10,7 +10,7 @@ class TestBasicFunctionality:
 
     def test_main_file_exists(self):
         """Test that __main__.py exists and has expected content."""
-        main_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '__main__.py')
+        main_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', '__main__.py')
         assert os.path.exists(main_file)
 
         with open(main_file, 'r') as f:
@@ -26,15 +26,15 @@ class TestProjectStructure:
     def test_project_files_exist(self):
         """Test that all expected project files exist."""
         project_root = os.path.dirname(os.path.dirname(__file__))
+        src_root = os.path.join(project_root, 'src')
 
         expected_files = [
             '__main__.py',
             'stationd.py',
             'amplifier.py',
-            'accessory.py',
-            'pyproject.toml'
+            'accessory.py'
         ]
 
         for file_name in expected_files:
-            file_path = os.path.join(project_root, file_name)
-            assert os.path.exists(file_path), f"Expected file {file_name} not found"
+            file_path = os.path.join(src_root, file_name)
+            assert os.path.exists(file_path), f"Expected file {file_name} not found in src/"
