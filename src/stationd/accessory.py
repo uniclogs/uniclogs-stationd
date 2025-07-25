@@ -1,4 +1,5 @@
-import stationd as sd
+from .gpio.gpio import GPIOPin
+from . import stationd as sd
 
 
 class Accessory:
@@ -45,32 +46,32 @@ class VU_TX_Relay(Accessory):
     def __init__(self):
         super().__init__()
         self.name = 'VU-TX-Relay'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['VU-TX-RELAY']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(GPIOPin(int(sd.config['VU-TX-RELAY']['power_pin']), None, initial=None))
 
 
 class Satnogs_Host(Accessory):
     def __init__(self):
         super().__init__()
         self.name = 'Satnogs-Host'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['SATNOGS-HOST']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(GPIOPin(int(sd.config['SATNOGS-HOST']['power_pin']), None, initial=None))
 
 
 class Radio_Host(Accessory):
     def __init__(self):
         super().__init__()
         self.name = 'Radio-Host'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['RADIO-HOST']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(GPIOPin(int(sd.config['RADIO-HOST']['power_pin']), None, initial=None))
 
 
 class Rotator(Accessory):
     def __init__(self):
         super().__init__()
         self.name = 'Rotator'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['ROTATOR']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(GPIOPin(int(sd.config['ROTATOR']['power_pin']), None, initial=None))
 
 
 class SDR_B200(Accessory):
     def __init__(self):
         super().__init__()
         self.name = 'SDR-B200'
-        self.power = sd.assert_out(sd.gpio.GPIOPin(int(sd.config['SDR-B200']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(GPIOPin(int(sd.config['SDR-B200']['power_pin']), None, initial=None))

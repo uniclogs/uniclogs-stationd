@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=75", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uniclogs-stationd"
+description = "A power management Daemon for Uniclogs."
+requires-python = ">=3.11"
+license = {text = "GPL-3.0"}
+dynamic = ["version"]
+readme = "README.md"
+authors = [
+    { name = "Steven Borrego" }
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "sphinx",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.2.0",
+]
+
+[tool.pytest.ini_options]
+norecursedirs = ["gpio"]
+addopts = [
+    "--cov=.",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov"
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "gpio/*", "tests/*"
+]

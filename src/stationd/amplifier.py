@@ -1,8 +1,8 @@
 from multiprocessing import Manager
 from datetime import datetime
-from gpio import gpio
 import time
-import stationd as sd
+from .gpio.gpio import GPIOPin
+from . import stationd as sd
 
 
 class Amplifier:
@@ -174,27 +174,27 @@ class VHF(Amplifier):
     def __init__(self):
         super().__init__()
         self.name = 'VHF'
-        self.tr_relay = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['tr_relay_pin']), None, initial=None))
-        self.rf_ptt = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['rf_ptt_pin']), None, initial=None))
-        self.pa_power = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['pa_power_pin']), None, initial=None))
-        self.lna = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['lna_pin']), None, initial=None))
-        self.polarization = sd.assert_out(gpio.GPIOPin(int(sd.config['VHF']['polarization_pin']), None, initial=None))
+        self.tr_relay = sd.assert_out(GPIOPin(int(sd.config['VHF']['tr_relay_pin']), None, initial=None))
+        self.rf_ptt = sd.assert_out(GPIOPin(int(sd.config['VHF']['rf_ptt_pin']), None, initial=None))
+        self.pa_power = sd.assert_out(GPIOPin(int(sd.config['VHF']['pa_power_pin']), None, initial=None))
+        self.lna = sd.assert_out(GPIOPin(int(sd.config['VHF']['lna_pin']), None, initial=None))
+        self.polarization = sd.assert_out(GPIOPin(int(sd.config['VHF']['polarization_pin']), None, initial=None))
 
 
 class UHF(Amplifier):
     def __init__(self):
         super().__init__()
         self.name = 'UHF'
-        self.tr_relay = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['tr_relay_pin']), None, initial=None))
-        self.rf_ptt = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['rf_ptt_pin']), None, initial=None))
-        self.pa_power = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['pa_power_pin']), None, initial=None))
-        self.lna = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['lna_pin']), None, initial=None))
-        self.polarization = sd.assert_out(gpio.GPIOPin(int(sd.config['UHF']['polarization_pin']), None, initial=None))
+        self.tr_relay = sd.assert_out(GPIOPin(int(sd.config['UHF']['tr_relay_pin']), None, initial=None))
+        self.rf_ptt = sd.assert_out(GPIOPin(int(sd.config['UHF']['rf_ptt_pin']), None, initial=None))
+        self.pa_power = sd.assert_out(GPIOPin(int(sd.config['UHF']['pa_power_pin']), None, initial=None))
+        self.lna = sd.assert_out(GPIOPin(int(sd.config['UHF']['lna_pin']), None, initial=None))
+        self.polarization = sd.assert_out(GPIOPin(int(sd.config['UHF']['polarization_pin']), None, initial=None))
 
 
 class L_Band(Amplifier):
     def __init__(self):
         super().__init__()
         self.name = 'L-Band'
-        self.rf_ptt = sd.assert_out(gpio.GPIOPin(int(sd.config['L-BAND']['rf_ptt_pin']), None, initial=None))
-        self.pa_power = sd.assert_out(gpio.GPIOPin(int(sd.config['L-BAND']['pa_power_pin']), None, initial=None))
+        self.rf_ptt = sd.assert_out(GPIOPin(int(sd.config['L-BAND']['rf_ptt_pin']), None, initial=None))
+        self.pa_power = sd.assert_out(GPIOPin(int(sd.config['L-BAND']['pa_power_pin']), None, initial=None))

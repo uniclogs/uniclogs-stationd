@@ -4,11 +4,16 @@ A power management Daemon for Uniclogs. Accepts network commands via UDP.
 
 ## Installation
 
-StationD requires python 3.10 or later
+Install sysfs gpio library:
 
-Install sysfs gpio library to program directory:
+```sh
+git submodule update --init
 ```
-$ git clone -b 14-25-sysfs-permissions https://github.com/ctrlh/gpio.git
+
+Install the project and its dependencies:
+
+```sh
+pip install -e ".[dev]"
 ```
 
 ## Usage
@@ -19,7 +24,11 @@ UDP_IP = '127.0.0.1'
 UDP_PORT = 5005
 ```
 
-To run the program: ```$ python3 stationd.py```
+To run the program:
+
+```sh
+python3 -m stationd
+```
 
 Example UDP command using Netcat:
 ```
@@ -66,8 +75,15 @@ l-band <pa-power|rf-ptt> <on|off|status>
 gettemp
 ```
 
+## Testing
 
-## License
+This project uses [pytest](https://docs.pytest.org/en/stable/) as it's testing
+framework. Run tests with the following command:
 
-[GPL 3.0](https://www.gnu.org/licenses/gpl-3.0.en.html)
+```sh
+pytest
+```
 
+A coverage report will be generated in the root of this project under
+`htmlcov/` when tests are run. View the report by opening `htmlcov/index.html`
+in a browser.
