@@ -11,19 +11,19 @@ import logging
 from datetime import datetime
 from multiprocessing import Manager
 import configparser
-from .gpio import gpio
+from .gpio.gpio import HIGH, LOW, OUT
 from . import amplifier as amp
 from . import accessory as acc
 
 # Config File
 config = configparser.ConfigParser()
-config.read('../../config.ini')
+config.read('config.ini')
 
 # Constants
-ON = gpio.HIGH
-OFF = gpio.LOW
-LEFT = gpio.HIGH
-RIGHT = gpio.LOW
+ON = HIGH
+OFF = LOW
+LEFT = HIGH
+RIGHT = LOW
 
 PTT_COOLDOWN = 120          # In seconds
 SLEEP_TIMER = 0.1
@@ -180,8 +180,8 @@ def get_status(gpiopin, command_obj):
 
 
 def assert_out(gpiopin):
-    if gpiopin.get_direction() != gpio.OUT:
-        gpiopin.set_direction(gpio.OUT)
+    if gpiopin.get_direction() != OUT:
+        gpiopin.set_direction(OUT)
     return gpiopin
 
 
