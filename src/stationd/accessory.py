@@ -1,4 +1,4 @@
-import stationd as sd
+from . import stationd as sd
 
 
 class Accessory:
