@@ -4,10 +4,10 @@ A power management Daemon for Uniclogs. Accepts network commands via UDP.
 
 ## Installation
 
-Install sysfs gpio library to program directory:
+Install sysfs gpio library:
 
 ```sh
-git clone -b 14-25-sysfs-permissions https://github.com/ctrlh/gpio.git
+git submodule update --init
 ```
 
 Install the project and its dependencies:
