@@ -1,14 +1,9 @@
 import pytest
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
-
+from stationd import accessory
 
 class TestAccessoryModuleStructure:
     """Test accessory module structure."""
 
-    def test_accessory_file_exists(self):
-        """Test that accessory.py exists."""
-        accessory_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'accessory.py')
-        assert os.path.exists(accessory_file)
+    def test_accessory_module_imports(self):
+        """Test that accessory module can be imported from stationd."""
+        assert accessory is not None

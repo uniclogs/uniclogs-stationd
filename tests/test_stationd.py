@@ -1,40 +1,22 @@
 import pytest
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
+from stationd import stationd
 
 
 class TestBasicFunctionality:
     """Test basic functionality without complex dependencies."""
 
-    def test_main_file_exists(self):
-        """Test that __main__.py exists and has expected content."""
-        main_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', '__main__.py')
-        assert os.path.exists(main_file)
+    def test_stationd_module_imports(self):
+        """Test that stationd module can be imported."""
+        assert stationd is not None
 
-        with open(main_file, 'r') as f:
-            content = f.read()
-            assert 'import stationd' in content
-            assert 'if __name__ == "__main__"' in content
-            assert 'StationD()' in content
+    def test_stationd_has_expected_attributes(self):
+        """Test that stationd module has expected classes and constants."""
+        assert hasattr(stationd, 'StationD')
+        assert hasattr(stationd, 'Command')
+        assert hasattr(stationd, 'PersistFH')
+        assert hasattr(stationd, 'config')
 
-
-class TestProjectStructure:
-    """Test project structure and files."""
-
-    def test_project_files_exist(self):
-        """Test that all expected project files exist."""
-        project_root = os.path.dirname(os.path.dirname(__file__))
-        src_root = os.path.join(project_root, 'src')
-
-        expected_files = [
-            '__main__.py',
-            'stationd.py',
-            'amplifier.py',
-            'accessory.py'
-        ]
-
-        for file_name in expected_files:
-            file_path = os.path.join(src_root, file_name)
-            assert os.path.exists(file_path), f"Expected file {file_name} not found in src/"
+    def test_main_module_functionality(self):
+        """Test that main module functionality is accessible."""
+        from stationd import __main__
+        assert __main__ is not None
