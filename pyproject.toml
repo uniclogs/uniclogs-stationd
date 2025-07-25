@@ -17,18 +17,13 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
-    "flake8",
     "sphinx",
     "pytest>=8.4.0",
     "pytest-cov>=6.2.0",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-norecursedirs = [".git", ".venv", "__pycache__", "examples", "gpio", "htmlcov"]
+norecursedirs = ["gpio"]
 addopts = [
     "--cov=.",
     "--cov-report=term-missing",
@@ -39,12 +34,4 @@ addopts = [
 source = ["."]
 omit = [
     ".venv/*", "__pycache__/*", "examples/*", "gpio/*", "htmlcov/*", "tests/*"
-]
-
-[tool.flake8]
-max-line-length = 99
-extend-ignore = ["E402"]
-per-file-ignore = "__init__.py: F401"
-exclude = [
-    ".git", ".venv", "__pycache__", "build", "examples", "gpio", "htmlcov"
 ]
