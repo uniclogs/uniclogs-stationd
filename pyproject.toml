@@ -26,6 +26,10 @@ dev = [
 
 [tool.mypy]
 ignore_missing_imports = true
+# TODO: Remove when gpio submodule is replaced.
+exclude = [
+    "src/stationd/gpio/.*"
+]
 
 [tool.pytest.ini_options]
 norecursedirs = ["gpio"]

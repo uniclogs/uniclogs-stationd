@@ -1,7 +1,7 @@
 import time
 from datetime import UTC, datetime
 from multiprocessing import Manager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from multiprocessing.managers import DictProxy
@@ -33,7 +33,7 @@ class Amplifier:
         self.molly_guard_time: datetime | None = None
 
         # Shared data
-        self.manager: Manager = Manager()
+        self.manager = Manager()
         self.shared: DictProxy[str, Any] = self.manager.dict()
         self.shared['ptt_off_time'] = datetime.now(tz=UTC)
 
@@ -74,25 +74,32 @@ class Amplifier:
         return True
 
 
-    def tr_relay_on(self) -> None:
+    def tr_relay_on(self, command_obj: Optional['sd.Command'] = None) -> None:
+        if self.tr_relay is None:
+            return
         if self.tr_relay.read() is sd.ON:
             return
         self.tr_relay.write(sd.ON)
 
 
-    def tr_relay_off(self) -> None:
+    def tr_relay_off(self, command_obj: Optional['sd.Command'] = None) -> None:
+        if self.tr_relay is None:
+            return
         if self.tr_relay.read() is sd.OFF:
             return
         self.tr_relay.write(sd.OFF)
 
 
     def rf_ptt_on(self, command_obj: 'sd.Command') -> None:
+        if self.rf_ptt is None:
+            raise sd.PTTConflictError(command_obj)
         if self.rf_ptt.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
-        if self.pa_power.read() is sd.OFF:
+        if self.pa_power is None or self.pa_power.read() is sd.OFF:
             raise sd.PTTConflictError(command_obj)
-        if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
+        if (command_obj.num_active_ptt is not None and
+            command_obj.num_active_ptt >= sd.PTT_MAX_COUNT):
             raise sd.MaxPTTError(command_obj)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
@@ -103,12 +110,17 @@ class Amplifier:
             self.lna_off(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
-        self.rf_ptt.write(sd.ON)
+        if self.rf_ptt is not None:
+            self.rf_ptt.write(sd.ON)
         sd.success_response(command_obj)
-        command_obj.num_active_ptt += 1
+        if command_obj.num_active_ptt is not None:
+            command_obj.num_active_ptt += 1
 
 
     def rf_ptt_off(self, command_obj: 'sd.Command') -> None:
+        if self.rf_ptt is None:
+            sd.no_change_response(command_obj)
+            return
         if self.rf_ptt.read() is sd.OFF:
             sd.no_change_response(command_obj)
             return
@@ -116,54 +128,73 @@ class Amplifier:
         sd.success_response(command_obj)
         #  set time ptt turned off
         self.shared['ptt_off_time'] = datetime.now(tz=UTC)
-        command_obj.num_active_ptt -= 1
-        # make sure num_active_ptt never falls below 0
-        command_obj.num_active_ptt = max(command_obj.num_active_ptt, 0)
+        if command_obj.num_active_ptt is not None:
+            command_obj.num_active_ptt -= 1
+            # make sure num_active_ptt never falls below 0
+            command_obj.num_active_ptt = max(command_obj.num_active_ptt, 0)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
             self.tr_relay_off(command_obj)
 
 
     def pa_power_on(self, command_obj: 'sd.Command') -> None:
+        if self.pa_power is None:
+            raise sd.PTTConflictError(command_obj)
         if self.pa_power.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
         if self.molly_guard(command_obj):
             if self.tr_relay is not None:
                 self.tr_relay_on(command_obj)
-            self.pa_power.write(sd.ON)
+            if self.pa_power is not None:
+                self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
 
 
     def pa_power_off(self, command_obj: 'sd.Command') -> None:
+        if self.pa_power is None:
+            sd.no_change_response(command_obj)
+            return
         if self.pa_power.read() is sd.OFF:
             sd.no_change_response(command_obj)
             return
-        if self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
         #  Check PTT off for at least 2 minutes
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
-        if diff_sec > sd.PTT_COOLDOWN:
+        if diff_sec is not None and diff_sec > sd.PTT_COOLDOWN:
             if self.tr_relay is not None:
                 self.tr_relay_off(command_obj)
-            self.pa_power.write(sd.OFF)
+            if self.pa_power is not None:
+                self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
         else:
-            raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN - diff_sec))
+            if diff_sec is not None:
+                raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN - diff_sec))
+            else:
+                raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN))
 
 
     def lna_on(self, command_obj: 'sd.Command') -> None:
+        if self.lna is None:
+            sd.no_change_response(command_obj)
+            return
         if self.lna.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
         #  Fail if PTT is on
-        if self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
-        self.lna.write(sd.ON)
+        if self.lna is not None:
+            self.lna.write(sd.ON)
         sd.success_response(command_obj)
 
 
     def lna_off(self, command_obj: 'sd.Command') -> None:
+        if self.lna is None:
+            if command_obj.command[1] == 'lna':
+                sd.no_change_response(command_obj)
+            return
         # only send response if called directly via command
         if self.lna.read() is sd.OFF and command_obj.command[1] == 'lna':
             sd.no_change_response(command_obj)
@@ -175,26 +206,34 @@ class Amplifier:
 
 
     def polarization_left(self, command_obj: 'sd.Command') -> None:
+        if self.polarization is None:
+            sd.no_change_response(command_obj)
+            return
         if self.polarization.read() is sd.LEFT:
             sd.no_change_response(command_obj)
             return
-        if self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
-        self.polarization.write(sd.LEFT)
+        if self.polarization is not None:
+            self.polarization.write(sd.LEFT)
         sd.success_response(command_obj)
 
 
     def polarization_right(self, command_obj: 'sd.Command') -> None:
+        if self.polarization is None:
+            sd.no_change_response(command_obj)
+            return
         if self.polarization.read() is sd.RIGHT:
             sd.no_change_response(command_obj)
             return
-        if self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
-        self.polarization.write(sd.RIGHT)
+        if self.polarization is not None:
+            self.polarization.write(sd.RIGHT)
         sd.success_response(command_obj)
 
 

@@ -35,13 +35,18 @@ class Accessory:
 
 
     def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
-        if isinstance(self, VUTxRelay) and command_obj.num_active_ptt > 0:
+        if (isinstance(self, VUTxRelay) and
+            command_obj.num_active_ptt is not None and
+            command_obj.num_active_ptt > 0):
             raise sd.PTTConflictError(command_obj)
 
 
     def power_on(self, command_obj: 'sd.Command') -> None:
         # VU TX Relay change cannot happen while any PTT is active
         self.vu_tx_relay_ptt_check(command_obj)
+        if self.power is None:
+            sd.no_change_response(command_obj)
+            return
         if self.power.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
@@ -52,6 +57,9 @@ class Accessory:
     def power_off(self, command_obj: 'sd.Command') -> None:
         # VU TX Relay change cannot happen while any PTT is active
         self.vu_tx_relay_ptt_check(command_obj)
+        if self.power is None:
+            sd.no_change_response(command_obj)
+            return
         if self.power.read() is sd.OFF:
             sd.no_change_response(command_obj)
             return
