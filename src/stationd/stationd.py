@@ -1,19 +1,24 @@
-"""
-Author: Steven Borrego
-Date: Aug 2022
-License: GPL 3.0
+"""Station daemon module for controlling RF amplifiers and accessories.
 
-StationD Power management
+This module provides the main server functionality for the uniclogs-stationd
+system, handling UDP commands for controlling RF amplifiers, accessories,
+and other hardware components.
 """
-import threading
-import socket
+
+import configparser
 import logging
+import socket
+import threading
 from datetime import datetime
 from multiprocessing import Manager
-import configparser
-from .gpio.gpio import HIGH, LOW, OUT
-from . import amplifier as amp
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from multiprocessing.managers import DictProxy
+
 from . import accessory as acc
+from . import amplifier as amp
+from .gpio.gpio import HIGH, LOW, OUT
 
 # Config File
 config = configparser.ConfigParser()
@@ -25,16 +30,26 @@ OFF = LOW
 LEFT = HIGH
 RIGHT = LOW
 
-PTT_COOLDOWN = 120          # In seconds
+PTT_COOLDOWN = 120  # In seconds
 SLEEP_TIMER = 0.1
 PTT_MAX_COUNT = 1
 
-#TEMP_PATH = '/sys/class/thermal/thermal_zone0/temp'    # Raspberry Pi CPU temperature
-TEMP_PATH = '/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input'    # UniClOGS UPB sensor
+TEMP_PATH = '/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input'  # UniClOGS UPB sensor
 
 
 class Command:
-    def __init__(self, command, sock, addr, num_active_ptt=None):
+    """Represents a command received from a client.
+
+    Contains the parsed command, socket connection information, and
+    PTT (Push-To-Talk) state tracking.
+    """
+
+    def __init__(self,
+                 command: list[str],
+                 sock: socket.socket,
+                 addr: tuple[str, int],
+                 num_active_ptt: int | None = None) -> None:
+        """Initialize a Command object."""
         self.command = command
         self.sock = sock
         self.addr = addr
@@ -42,37 +57,59 @@ class Command:
 
 
 class PersistFH:
-    def __init__(self, path):
+    """Persistent file handle for reading system files.
+
+    Provides access to sysfs with automatic seeking to the beginning for
+    repeated reads.
+    """
+
+    def __init__(self, path: str) -> None:
+        """Initialize a persistent file handle."""
         self.path = path
         if not self.path.startswith('/sys'):
             raise RuntimeError('Using this on non-sysfs files may produce unexpected results')
         self.fh = open(self.path, 'rb', buffering=0)
 
-    def read(self):
+
+    def read(self) -> bytes:
         self.fh.seek(0)
         return self.fh.read()[:-1]
 
 
 class StationD:
-    def __init__(self):
+    """The main station daemon server.
+
+    Manages UDP socket communications, hardware device instances, and command
+    processing for the uniclogs-stationd system.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the station daemon.
+
+        Sets up UDP socket, hardware device instances, shared state, and
+        logging.
+        """
         # UDP Socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((config['NETWORK']['udp_ip'], int(config['NETWORK']['udp_port'])))
+        self.sock.bind((
+            config['NETWORK']['udp_ip'],
+            int(config['NETWORK']['udp_port'])
+        ))
         self.socket_lock = threading.Lock()
         # Amplifiers
         self.vhf = amp.VHF()
         self.uhf = amp.UHF()
-        self.l_band = amp.L_Band()
+        self.l_band = amp.LBand()
         # Accessories
-        self.vu_tx_relay = acc.VU_TX_Relay()
-        self.satnogs_host = acc.Satnogs_Host()
-        self.radio_host = acc.Radio_Host()
+        self.vu_tx_relay = acc.VUTxRelay()
+        self.satnogs_host = acc.SatnogsHost()
+        self.radio_host = acc.RadioHost()
         self.rotator = acc.Rotator()
-        self.sdr_b200 = acc.SDR_B200()
+        self.sdr_b200 = acc.SDRB200()
         # Temperature sensor
         self.pi_cpu = PersistFH(TEMP_PATH)
         # Shared dict
-        self.shared = Manager().dict()
+        self.shared: DictProxy[str, Any] = Manager().dict()
         self.shared['num_active_ptt'] = 0
         # Logger
         logging.basicConfig(filename='activity.log',
@@ -81,35 +118,40 @@ class StationD:
                             encoding='utf-8',
                             level=logging.DEBUG)
 
-    def shutdown_server(self):
+
+    def shutdown_server(self) -> None:
         print('Closing connection...')
         self.sock.close()
 
-    def command_handler(self, command_obj):
+
+    def command_handler(self, command_obj: Command) -> None:
         with self.socket_lock:
             try:
                 device = command_obj.command[0].replace('-', '_')
                 command_obj.num_active_ptt = self.shared['num_active_ptt']
 
-                if device in ['vhf', 'uhf', 'l_band', 'vu_tx_relay', 'satnogs_host', 'radio_host', 'rotator', 'sdr_b200']:
+                if device in ['vhf', 'uhf', 'l_band', 'vu_tx_relay',
+                              'satnogs_host', 'radio_host', 'rotator',
+                              'sdr_b200']:
                     command_parser(getattr(self, device), command_obj)
                     self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':
                     read_temp(command_obj, self.pi_cpu)
                 else:
-                    raise Invalid_Command(command_obj)
-            except PTT_Conflict:
+                    raise InvalidCommand(command_obj) from error
+            except PTTConflict:
                 ptt_conflict_response(command_obj)
-            except PTT_Cooldown as e:
+            except PTTCooldown as e:
                 ptt_cooldown_response(command_obj, e.seconds)
-            except Molly_Guard:
+            except MollyGuard:
                 molly_guard_response(command_obj)
-            except Max_PTT:
+            except MaxPTT:
                 molly_guard_response(command_obj)
-            except Invalid_Command:
+            except InvalidCommand:
                 invalid_command_response(command_obj)
 
-    def command_listener(self):
+
+    def command_listener(self) -> None:
         try:
             while True:
                 try:
@@ -125,8 +167,9 @@ class StationD:
             self.shutdown_server()
 
 
-# Global Functions
-def command_parser(device, command_obj):
+# Globals ----------------------------------------------------------------------
+
+def command_parser(device: acc.Accessory | amp.Amplifier, command_obj: Command) -> None:
     if len(command_obj.command) == 3:
         # Component Status command
         if command_obj.command[2] == 'status':
@@ -137,16 +180,16 @@ def command_parser(device, command_obj):
                 function_name = f'{command_obj.command[1].replace("-", "_")}_{command_obj.command[2]}'
                 function = getattr(device, function_name)
                 function(command_obj)
-            except AttributeError:
-                raise Invalid_Command(command_obj)
+            except AttributeError as error:
+                raise InvalidCommand(command_obj) from error
     # Device Status Commands
     elif len(command_obj.command) == 2:
         device.device_status(command_obj)
     else:
-        raise Invalid_Command(command_obj)
+        raise InvalidCommand(command_obj) from error
 
 
-def calculate_diff_sec(subtrahend):
+def calculate_diff_sec(subtrahend: datetime | None) -> float | None:
     if subtrahend is None:
         return None
     now = datetime.now()
@@ -155,11 +198,11 @@ def calculate_diff_sec(subtrahend):
     return diff_sec
 
 
-def log(command_obj, message):
-    logging.debug(f'ADDRESS: {str(command_obj.addr)}, {message.strip()}')
+def log(command_obj: Command, message: str) -> None:
+    logging.debug(f'ADDRESS: {command_obj.addr!s}, {message.strip()}')
 
 
-def get_state(gpiopin):
+def get_state(gpiopin: Any | None) -> str:
     if gpiopin is None:
         state = 'N/A'
     elif gpiopin.read() is ON:
@@ -169,99 +212,127 @@ def get_state(gpiopin):
     return state
 
 
-def read_temp(command_obj, o):
+def read_temp(command_obj: Command, o: PersistFH) -> None:
     temp = float(o.read())/1000
     temp_response(command_obj, temp)
 
 
-def get_status(gpiopin, command_obj):
+def get_status(gpiopin: Any | None, command_obj: Command) -> str:
     status = f'{command_obj.command[0]} {command_obj.command[1]} {get_state(gpiopin)}\n'
     return status
 
 
-def assert_out(gpiopin):
+def assert_out(gpiopin: Any) -> Any:
     if gpiopin.get_direction() != OUT:
         gpiopin.set_direction(OUT)
     return gpiopin
 
 
-# Response Handling
-def success_response(command_obj):
+# Response Handling ------------------------------------------------------------
+
+def success_response(command_obj: Command) -> None:
     command = command_obj.command
     message = f'SUCCESS: {command[0]} {command[1]} {command[2]}\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def no_change_response(command_obj):
+def no_change_response(command_obj: Command) -> None:
     command = command_obj.command
     message = f'WARNING: {command[0]} {command[1]} {command[2]} No Change\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def molly_guard_response(command_obj):
+def molly_guard_response(command_obj: Command) -> None:
     message = 'Re-enter the command within the next 20 seconds if you would like to proceed\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def ptt_conflict_response(command_obj):
+def ptt_conflict_response(command_obj: Command) -> None:
     command = command_obj.command
     message = f'FAIL: {command[0]} {command[1]} {command[2]} PTT Conflict\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def max_ptt_response(command_obj):
+def max_ptt_response(command_obj: Command) -> None:
     command = command_obj.command
     message = f'Fail: {command[0]} {command[1]} {command[2]} Max PTT\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def ptt_cooldown_response(command_obj, seconds):
+def ptt_cooldown_response(command_obj: Command, seconds: float) -> None:
     message = f'WARNING: Please wait {seconds} seconds and try again\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def invalid_command_response(command_obj):
-    message = f'FAIL: Invalid Command\n'
+def invalid_command_response(command_obj: Command) -> None:
+    message = 'FAIL: Invalid Command\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-def status_response(command_obj, status):
+def status_response(command_obj: Command, status: str) -> None:
     message = status
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     message = message.replace('\n', ', ')
     log(command_obj, message)
 
 
-def temp_response(command_obj, temp):
-    message = f'temp: {str(temp)}\n'
+def temp_response(command_obj: Command, temp: float) -> None:
+    message = f'temp: {temp!s}\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
 # Exceptions
-class Molly_Guard(Exception):
+class MollyGuard(Exception):
+    """Exception raised when molly guard protection is triggered.
+
+    Used to prevent accidental execution of potentially dangerous commands by
+    requiring confirmation within a time window.
+    """
     pass
 
 
-class PTT_Conflict(Exception):
+class PTTConflict(Exception):
+    """Exception raised when PTT operation conflicts with current state.
+
+    The requested PTT operation cannot be performed due to conflicting hardware
+    states.
+    """
     pass
 
 
-class Max_PTT(Exception):
+class MaxPTT(Exception):
+    """Exception raised when maximum PTT connections are exceeded.
+
+    Prevents exceeding the configured maximum number of simultaneous PTT
+    connections.
+    """
     pass
 
 
-class PTT_Cooldown(Exception):
-    def __init__(self, seconds):
+class PTTCooldown(Exception):
+    """Exception raised when PTT cooldown period is not satisfied.
+
+    Enforces mandatory waiting period between PTT operations for hardware
+    protection.
+    """
+
+    def __init__(self, seconds: float) -> None:
+        """Initialize PTTCooldown exception."""
         self.seconds = seconds
 
 
-class Invalid_Command(Exception):
+class InvalidCommand(Exception):
+    """Exception raised for unrecognized or malformed commands.
+
+    Indicates that the received command cannot be parsed or
+    does not match any known command pattern.
+    """
     pass

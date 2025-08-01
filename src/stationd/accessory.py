@@ -1,29 +1,45 @@
-from .gpio.gpio import GPIOPin
 from . import stationd as sd
+from .gpio.gpio import GPIOPin
 
 
 class Accessory:
-    def __init__(self):
-        self.name = None
-        self.power = None
+    """Base class for station accessories with GPIO power control.
 
-    def device_status(self, command_obj):
+    This class provides common functionality for station accessories that can be
+    controlled via GPIO pins. All accessories have power control capabilities
+    and support status reporting via network commands (UDP).
+    """
+
+    def __init__(self) -> None:
+        """Initialize a new Accessory instance.
+
+        Sets up the base attributes for an accessory. The name and power GPIO
+        pin will be configured by subclasses.
+        """
+        self.name: str | None = None
+        self.power: GPIOPin | None = None
+
+
+    def device_status(self, command_obj: 'sd.Command') -> None:
         status = f'{command_obj.command[0]} power {sd.get_state(self.power)}\n'
         sd.status_response(command_obj, status)
 
-    def component_status(self, command_obj):
+
+    def component_status(self, command_obj: 'sd.Command') -> None:
         try:
             component = getattr(self, command_obj.command[1].replace('-', '_'))
             status = sd.get_status(component, command_obj)
             sd.status_response(command_obj, status)
-        except AttributeError:
-            raise sd.Invalid_Command(command_obj)
+        except AttributeError as error:
+            raise sd.InvalidCommand(command_obj) from error
 
-    def vu_tx_relay_ptt_check(self, command_obj):
-        if isinstance(self, VU_TX_Relay) and command_obj.num_active_ptt > 0:
-            raise sd.PTT_Conflict(command_obj)
 
-    def power_on(self, command_obj):
+    def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
+        if isinstance(self, VUTxRelay) and command_obj.num_active_ptt > 0:
+            raise sd.PTTConflict(command_obj)
+
+
+    def power_on(self, command_obj: 'sd.Command') -> None:
         # VU TX Relay change cannot happen while any PTT is active
         self.vu_tx_relay_ptt_check(command_obj)
         if self.power.read() is sd.ON:
@@ -32,7 +48,8 @@ class Accessory:
         self.power.write(sd.ON)
         sd.success_response(command_obj)
 
-    def power_off(self, command_obj):
+
+    def power_off(self, command_obj: 'sd.Command') -> None:
         # VU TX Relay change cannot happen while any PTT is active
         self.vu_tx_relay_ptt_check(command_obj)
         if self.power.read() is sd.OFF:
@@ -42,36 +59,119 @@ class Accessory:
         sd.success_response(command_obj)
 
 
-class VU_TX_Relay(Accessory):
-    def __init__(self):
+class VUTxRelay(Accessory):
+    """VHF/UHF transmit relay control.
+
+    Controls the VU TX relay which switches between VHF and UHF transmission
+    paths.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the VHF/UHF TX Relay accessory.
+
+        Sets up the VU TX relay with its configured GPIO power pin.
+        """
         super().__init__()
         self.name = 'VU-TX-Relay'
-        self.power = sd.assert_out(GPIOPin(int(sd.config['VU-TX-RELAY']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(
+            GPIOPin(
+                int(sd.config['VU-TX-RELAY']['power_pin']),
+                None,
+                initial=None
+            )
+        )
 
 
-class Satnogs_Host(Accessory):
-    def __init__(self):
+class SatnogsHost(Accessory):
+    """SatNOGS host power control.
+
+    Controls power to the SatNOGS host which handles satellite tracking
+    and observation scheduling.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the SatNOGS Host accessory.
+
+        Sets up the SatNOGS host power control with its configured GPIO power
+        pin.
+        """
         super().__init__()
         self.name = 'Satnogs-Host'
-        self.power = sd.assert_out(GPIOPin(int(sd.config['SATNOGS-HOST']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(
+            GPIOPin(
+                int(sd.config['SATNOGS-HOST']['power_pin']),
+                None,
+                initial=None
+            )
+        )
 
 
-class Radio_Host(Accessory):
-    def __init__(self):
+class RadioHost(Accessory):
+    """Radio host power control.
+
+    Controls power to the radio host which manages radio communication and
+    digital signal processing.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the Radio Host accessory.
+
+        Sets up the radio host power control with its configured GPIO power pin.
+        """
         super().__init__()
         self.name = 'Radio-Host'
-        self.power = sd.assert_out(GPIOPin(int(sd.config['RADIO-HOST']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(
+            GPIOPin(
+                int(sd.config['RADIO-HOST']['power_pin']),
+                None,
+                initial=None
+            )
+        )
 
 
 class Rotator(Accessory):
-    def __init__(self):
+    """Antenna rotator power control.
+
+    Controls power to the antenna rotator system which provides azimuth and
+    elevation positioning for directional antennas during satellite passes.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the Rotator accessory.
+
+        Sets up the antenna rotator power control with its configured GPIO power
+        pin.
+        """
         super().__init__()
         self.name = 'Rotator'
-        self.power = sd.assert_out(GPIOPin(int(sd.config['ROTATOR']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(
+            GPIOPin(
+                int(sd.config['ROTATOR']['power_pin']),
+                None,
+                initial=None
+            )
+        )
 
 
-class SDR_B200(Accessory):
-    def __init__(self):
+class SDRB200(Accessory):
+    """USRP B200 SDR power control.
+
+    Controls power to the USRP B200 Software Defined Radio which provides
+    RF reception and transmission capabilities for the ground station.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the SDR B200 accessory.
+
+        Sets up the USRP B200 SDR power control with its configured
+        GPIO power pin.
+        """
         super().__init__()
         self.name = 'SDR-B200'
-        self.power = sd.assert_out(GPIOPin(int(sd.config['SDR-B200']['power_pin']), None, initial=None))
+        self.power = sd.assert_out(
+            GPIOPin(
+                int(sd.config['SDR-B200']['power_pin']),
+                None,
+                initial=None
+            )
+        )
