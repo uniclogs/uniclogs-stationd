@@ -1,7 +1,7 @@
 import time
 from datetime import UTC, datetime
 from multiprocessing import Manager
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from multiprocessing.managers import DictProxy
@@ -74,7 +74,7 @@ class Amplifier:
         return True
 
 
-    def tr_relay_on(self, command_obj: Optional['sd.Command'] = None) -> None:
+    def tr_relay_on(self) -> None:
         if self.tr_relay is None:
             return
         if self.tr_relay.read() is sd.ON:
@@ -82,7 +82,7 @@ class Amplifier:
         self.tr_relay.write(sd.ON)
 
 
-    def tr_relay_off(self, command_obj: Optional['sd.Command'] = None) -> None:
+    def tr_relay_off(self) -> None:
         if self.tr_relay is None:
             return
         if self.tr_relay.read() is sd.OFF:
@@ -103,7 +103,7 @@ class Amplifier:
             raise sd.MaxPTTError(command_obj)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
-            self.tr_relay_on(command_obj)
+            self.tr_relay_on()
 
         # Ptt command received, turn off LNA
         if self.lna is not None:
@@ -134,7 +134,7 @@ class Amplifier:
             command_obj.num_active_ptt = max(command_obj.num_active_ptt, 0)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
-            self.tr_relay_off(command_obj)
+            self.tr_relay_off()
 
 
     def pa_power_on(self, command_obj: 'sd.Command') -> None:
@@ -145,7 +145,7 @@ class Amplifier:
             return
         if self.molly_guard(command_obj):
             if self.tr_relay is not None:
-                self.tr_relay_on(command_obj)
+                self.tr_relay_on()
             if self.pa_power is not None:
                 self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
@@ -164,15 +164,14 @@ class Amplifier:
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
         if diff_sec is not None and diff_sec > sd.PTT_COOLDOWN:
             if self.tr_relay is not None:
-                self.tr_relay_off(command_obj)
+                self.tr_relay_off()
             if self.pa_power is not None:
                 self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
+        elif diff_sec is not None:
+            raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN - diff_sec))
         else:
-            if diff_sec is not None:
-                raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN - diff_sec))
-            else:
-                raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN))
+            raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN))
 
 
     def lna_on(self, command_obj: 'sd.Command') -> None:
