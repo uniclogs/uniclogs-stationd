@@ -14,14 +14,14 @@ from multiprocessing import Manager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from . import accessory as acc
-from . import amplifier as amp
 from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
 
 # Module logger
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    from . import accessory as acc
+    from . import amplifier as amp
     from multiprocessing.managers import DictProxy
 
 # Config File
@@ -179,7 +179,7 @@ class StationD:
 
 # Globals ----------------------------------------------------------------------
 
-def command_parser(device: acc.Accessory | amp.Amplifier, command_obj: Command) -> None:
+def command_parser(device: 'acc.Accessory | amp.Amplifier', command_obj: Command) -> None:
     """Parse and execute commands for hardware devices."""
     if len(command_obj.command) == 3:
         # Component Status command
