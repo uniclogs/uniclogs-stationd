@@ -11,17 +11,18 @@ import socket
 import threading
 from datetime import UTC, datetime
 from multiprocessing import Manager
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from . import accessory as acc
+from . import amplifier as amp
+from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
 
 # Module logger
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from multiprocessing.managers import DictProxy
-
-from . import accessory as acc
-from . import amplifier as amp
-from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
 
 # Config File
 config = configparser.ConfigParser()
@@ -71,7 +72,9 @@ class PersistFH:
         self.path = path
         if not self.path.startswith('/sys'):
             raise RuntimeError('Using this on non-sysfs files may produce unexpected results')
-        self.fh = open(self.path, 'rb', buffering=0)
+        # PersistFH is specifically designed to maintain a persistent file
+        # handle for efficient repeated reads from sysfs files. Ignoring SIM115.
+        self.fh = Path(self.path).open('rb', buffering=0)  # noqa: SIM115
 
 
     def read(self) -> bytes:
@@ -125,7 +128,7 @@ class StationD:
 
     def shutdown_server(self) -> None:
         """Shut down the station daemon server."""
-        print('Closing connection...')
+        logger.info('Closing connection...')
         self.sock.close()
 
 
@@ -144,7 +147,7 @@ class StationD:
                 elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':
                     read_temp(command_obj, self.pi_cpu)
                 else:
-                    raise InvalidCommandError(command_obj) from error
+                    invalid_command_response(command_obj)
             except PTTConflictError:
                 ptt_conflict_response(command_obj)
             except PTTCooldownError as e:
@@ -168,8 +171,8 @@ class StationD:
                     c_thread = threading.Thread(target=self.command_handler, args=(command_obj,))
                     c_thread.daemon = True
                     c_thread.start()
-                except OSError as err:
-                    print(err)
+                except OSError:
+                    logger.exception('Socket error: %s')
         except KeyboardInterrupt:
             self.shutdown_server()
 
@@ -194,7 +197,7 @@ def command_parser(device: acc.Accessory | amp.Amplifier, command_obj: Command) 
     elif len(command_obj.command) == 2:
         device.device_status(command_obj)
     else:
-        raise InvalidCommandError(command_obj) from error
+        raise InvalidCommandError(command_obj)
 
 
 def calculate_diff_sec(subtrahend: datetime | None) -> float | None:
