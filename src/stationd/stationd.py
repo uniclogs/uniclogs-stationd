@@ -9,16 +9,19 @@ import configparser
 import logging
 import socket
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from multiprocessing import Manager
 from typing import TYPE_CHECKING, Any
+
+# Module logger
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from multiprocessing.managers import DictProxy
 
 from . import accessory as acc
 from . import amplifier as amp
-from .gpio.gpio import HIGH, LOW, OUT
+from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
 
 # Config File
 config = configparser.ConfigParser()
@@ -72,6 +75,7 @@ class PersistFH:
 
 
     def read(self) -> bytes:
+        """Read from the file handle."""
         self.fh.seek(0)
         return self.fh.read()[:-1]
 
@@ -120,11 +124,13 @@ class StationD:
 
 
     def shutdown_server(self) -> None:
+        """Shut down the station daemon server."""
         print('Closing connection...')
         self.sock.close()
 
 
     def command_handler(self, command_obj: Command) -> None:
+        """Handle incoming commands and route them to appropriate devices."""
         with self.socket_lock:
             try:
                 device = command_obj.command[0].replace('-', '_')
@@ -138,20 +144,21 @@ class StationD:
                 elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':
                     read_temp(command_obj, self.pi_cpu)
                 else:
-                    raise InvalidCommand(command_obj) from error
-            except PTTConflict:
+                    raise InvalidCommandError(command_obj) from error
+            except PTTConflictError:
                 ptt_conflict_response(command_obj)
-            except PTTCooldown as e:
+            except PTTCooldownError as e:
                 ptt_cooldown_response(command_obj, e.seconds)
-            except MollyGuard:
+            except MollyGuardError:
                 molly_guard_response(command_obj)
-            except MaxPTT:
+            except MaxPTTError:
                 molly_guard_response(command_obj)
-            except InvalidCommand:
+            except InvalidCommandError:
                 invalid_command_response(command_obj)
 
 
     def command_listener(self) -> None:
+        """Listen for incoming UDP commands and spawn handler threads."""
         try:
             while True:
                 try:
@@ -170,6 +177,7 @@ class StationD:
 # Globals ----------------------------------------------------------------------
 
 def command_parser(device: acc.Accessory | amp.Amplifier, command_obj: Command) -> None:
+    """Parse and execute commands for hardware devices."""
     if len(command_obj.command) == 3:
         # Component Status command
         if command_obj.command[2] == 'status':
@@ -177,32 +185,34 @@ def command_parser(device: acc.Accessory | amp.Amplifier, command_obj: Command) 
         # Component On/Off command
         else:
             try:
-                function_name = f'{command_obj.command[1].replace("-", "_")}_{command_obj.command[2]}'
-                function = getattr(device, function_name)
-                function(command_obj)
+                fxn_name = f'{command_obj.command[1].replace("-", "_")}_{command_obj.command[2]}'
+                fxn = getattr(device, fxn_name)
+                fxn(command_obj)
             except AttributeError as error:
-                raise InvalidCommand(command_obj) from error
+                raise InvalidCommandError(command_obj) from error
     # Device Status Commands
     elif len(command_obj.command) == 2:
         device.device_status(command_obj)
     else:
-        raise InvalidCommand(command_obj) from error
+        raise InvalidCommandError(command_obj) from error
 
 
 def calculate_diff_sec(subtrahend: datetime | None) -> float | None:
+    """Calculate the time difference in seconds from a past datetime to now."""
     if subtrahend is None:
         return None
-    now = datetime.now()
+    now = datetime.now(tz=UTC)
     diff = now - subtrahend
-    diff_sec = diff.total_seconds()
-    return diff_sec
+    return diff.total_seconds()
 
 
 def log(command_obj: Command, message: str) -> None:
-    logging.debug(f'ADDRESS: {command_obj.addr!s}, {message.strip()}')
+    """Log a debug message with client address information."""
+    logger.debug('ADDRESS: %s, %s', command_obj.addr, message.strip())
 
 
-def get_state(gpiopin: Any | None) -> str:
+def get_state(gpiopin: GPIOPin | None) -> str:
+    """Get the current state of a given GPIO pin."""
     if gpiopin is None:
         state = 'N/A'
     elif gpiopin.read() is ON:
@@ -213,16 +223,18 @@ def get_state(gpiopin: Any | None) -> str:
 
 
 def read_temp(command_obj: Command, o: PersistFH) -> None:
+    """Read temperature from a persistent file handle and send response."""
     temp = float(o.read())/1000
     temp_response(command_obj, temp)
 
 
-def get_status(gpiopin: Any | None, command_obj: Command) -> str:
-    status = f'{command_obj.command[0]} {command_obj.command[1]} {get_state(gpiopin)}\n'
-    return status
+def get_status(gpiopin: GPIOPin | None, command_obj: Command) -> str:
+    """Get a formatted status string for a GPIO pin."""
+    return f'{command_obj.command[0]} {command_obj.command[1]} {get_state(gpiopin)}\n'
 
 
-def assert_out(gpiopin: Any) -> Any:
+def assert_out(gpiopin: GPIOPin) -> GPIOPin:
+    """Ensure a GPIO pin is configured as an output pin."""
     if gpiopin.get_direction() != OUT:
         gpiopin.set_direction(OUT)
     return gpiopin
@@ -231,6 +243,7 @@ def assert_out(gpiopin: Any) -> Any:
 # Response Handling ------------------------------------------------------------
 
 def success_response(command_obj: Command) -> None:
+    """Send a success response message to the client."""
     command = command_obj.command
     message = f'SUCCESS: {command[0]} {command[1]} {command[2]}\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
@@ -238,6 +251,7 @@ def success_response(command_obj: Command) -> None:
 
 
 def no_change_response(command_obj: Command) -> None:
+    """Send a no-change warning response to the client."""
     command = command_obj.command
     message = f'WARNING: {command[0]} {command[1]} {command[2]} No Change\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
@@ -245,12 +259,14 @@ def no_change_response(command_obj: Command) -> None:
 
 
 def molly_guard_response(command_obj: Command) -> None:
+    """Send a molly guard protection response to the client."""
     message = 'Re-enter the command within the next 20 seconds if you would like to proceed\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
 def ptt_conflict_response(command_obj: Command) -> None:
+    """Send a PTT conflict error response to the client."""
     command = command_obj.command
     message = f'FAIL: {command[0]} {command[1]} {command[2]} PTT Conflict\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
@@ -258,6 +274,7 @@ def ptt_conflict_response(command_obj: Command) -> None:
 
 
 def max_ptt_response(command_obj: Command) -> None:
+    """Send a maximum PTT exceeded error response to the client."""
     command = command_obj.command
     message = f'Fail: {command[0]} {command[1]} {command[2]} Max PTT\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
@@ -265,18 +282,21 @@ def max_ptt_response(command_obj: Command) -> None:
 
 
 def ptt_cooldown_response(command_obj: Command, seconds: float) -> None:
+    """Send a PTT cooldown warning response to the client."""
     message = f'WARNING: Please wait {seconds} seconds and try again\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
 def invalid_command_response(command_obj: Command) -> None:
+    """Send an invalid command error response to the client."""
     message = 'FAIL: Invalid Command\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
 def status_response(command_obj: Command, status: str) -> None:
+    """Send a status response to the client."""
     message = status
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     message = message.replace('\n', ', ')
@@ -284,40 +304,39 @@ def status_response(command_obj: Command, status: str) -> None:
 
 
 def temp_response(command_obj: Command, temp: float) -> None:
+    """Send a temperature readout response to the client."""
     message = f'temp: {temp!s}\n'
     command_obj.sock.sendto(message.encode('utf-8'), command_obj.addr)
     log(command_obj, message)
 
 
-# Exceptions
-class MollyGuard(Exception):
+# Exceptions -------------------------------------------------------------------
+
+class MollyGuardError(Exception):
     """Exception raised when molly guard protection is triggered.
 
     Used to prevent accidental execution of potentially dangerous commands by
     requiring confirmation within a time window.
     """
-    pass
 
 
-class PTTConflict(Exception):
+class PTTConflictError(Exception):
     """Exception raised when PTT operation conflicts with current state.
 
     The requested PTT operation cannot be performed due to conflicting hardware
     states.
     """
-    pass
 
 
-class MaxPTT(Exception):
+class MaxPTTError(Exception):
     """Exception raised when maximum PTT connections are exceeded.
 
     Prevents exceeding the configured maximum number of simultaneous PTT
     connections.
     """
-    pass
 
 
-class PTTCooldown(Exception):
+class PTTCooldownError(Exception):
     """Exception raised when PTT cooldown period is not satisfied.
 
     Enforces mandatory waiting period between PTT operations for hardware
@@ -325,14 +344,9 @@ class PTTCooldown(Exception):
     """
 
     def __init__(self, seconds: float) -> None:
-        """Initialize PTTCooldown exception."""
+        """Initialize Push-to-Talk Cooldown exception."""
         self.seconds = seconds
 
 
-class InvalidCommand(Exception):
-    """Exception raised for unrecognized or malformed commands.
-
-    Indicates that the received command cannot be parsed or
-    does not match any known command pattern.
-    """
-    pass
+class InvalidCommandError(Exception):
+    """Exception raised for unrecognized or malformed commands."""

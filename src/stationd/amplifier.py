@@ -61,14 +61,14 @@ class Amplifier:
                 status = sd.get_status(component, command_obj)
                 sd.status_response(command_obj, status)
         except AttributeError as error:
-            raise sd.InvalidCommand(command_obj) from error
+            raise sd.InvalidCommandError(command_obj) from error
 
 
     def molly_guard(self, command_obj: 'sd.Command') -> bool:
         diff_sec = sd.calculate_diff_sec(self.molly_guard_time)
         if diff_sec is None or diff_sec > 20:
             self.molly_guard_time = datetime.now(tz=UTC)
-            raise sd.MollyGuard(command_obj)
+            raise sd.MollyGuardError(command_obj)
         # reset timer to none
         self.molly_guard_time = None
         return True
@@ -91,9 +91,9 @@ class Amplifier:
             sd.no_change_response(command_obj)
             return
         if self.pa_power.read() is sd.OFF:
-            raise sd.PTTConflict(command_obj)
+            raise sd.PTTConflictError(command_obj)
         if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
-            raise sd.MaxPTT(command_obj)
+            raise sd.MaxPTTError(command_obj)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
             self.tr_relay_on(command_obj)
@@ -140,7 +140,7 @@ class Amplifier:
             sd.no_change_response(command_obj)
             return
         if self.rf_ptt.read() is sd.ON:
-            raise sd.PTTConflict(command_obj)
+            raise sd.PTTConflictError(command_obj)
         #  Check PTT off for at least 2 minutes
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
         if diff_sec > sd.PTT_COOLDOWN:
@@ -149,7 +149,7 @@ class Amplifier:
             self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
         else:
-            raise sd.PTTCooldown(round(sd.PTT_COOLDOWN - diff_sec))
+            raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN - diff_sec))
 
 
     def lna_on(self, command_obj: 'sd.Command') -> None:
@@ -158,7 +158,7 @@ class Amplifier:
             return
         #  Fail if PTT is on
         if self.rf_ptt.read() is sd.ON:
-            raise sd.PTTConflict(command_obj)
+            raise sd.PTTConflictError(command_obj)
         self.lna.write(sd.ON)
         sd.success_response(command_obj)
 
@@ -179,7 +179,7 @@ class Amplifier:
             sd.no_change_response(command_obj)
             return
         if self.rf_ptt.read() is sd.ON:
-            raise sd.PTTConflict(command_obj)
+            raise sd.PTTConflictError(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
         self.polarization.write(sd.LEFT)
@@ -191,7 +191,7 @@ class Amplifier:
             sd.no_change_response(command_obj)
             return
         if self.rf_ptt.read() is sd.ON:
-            raise sd.PTTConflict(command_obj)
+            raise sd.PTTConflictError(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
         self.polarization.write(sd.RIGHT)

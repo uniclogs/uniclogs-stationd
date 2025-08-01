@@ -31,12 +31,12 @@ class Accessory:
             status = sd.get_status(component, command_obj)
             sd.status_response(command_obj, status)
         except AttributeError as error:
-            raise sd.InvalidCommand(command_obj) from error
+            raise sd.InvalidCommandError(command_obj) from error
 
 
     def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
         if isinstance(self, VUTxRelay) and command_obj.num_active_ptt > 0:
-            raise sd.PTTConflict(command_obj)
+            raise sd.PTTConflictError(command_obj)
 
 
     def power_on(self, command_obj: 'sd.Command') -> None:
