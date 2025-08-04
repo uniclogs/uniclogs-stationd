@@ -10,14 +10,19 @@ class Accessory:
     and support status reporting via network commands (UDP).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, config_section: str) -> None:
         """Initialize a new Accessory instance.
 
-        Sets up the base attributes for an accessory. The name and power GPIO
-        pin will be configured by subclasses.
+        Sets up the base attributes for an accessory including the power GPIO
+        pin.
         """
-        self.name: str | None = None
-        self.power: GPIOPin | None = None
+        self.power = sd.assert_out(
+            GPIOPin(
+                int(sd.config[config_section]['power_pin']),
+                None,
+                initial=None
+            )
+        )
 
 
     def device_status(self, command_obj: 'sd.Command') -> None:
@@ -79,15 +84,7 @@ class VUTxRelay(Accessory):
 
         Sets up the VU TX relay with its configured GPIO power pin.
         """
-        super().__init__()
-        self.name = 'VU-TX-Relay'
-        self.power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['VU-TX-RELAY']['power_pin']),
-                None,
-                initial=None
-            )
-        )
+        super().__init__('VU-TX-RELAY')
 
 
 class SatnogsHost(Accessory):
@@ -103,15 +100,7 @@ class SatnogsHost(Accessory):
         Sets up the SatNOGS host power control with its configured GPIO power
         pin.
         """
-        super().__init__()
-        self.name = 'Satnogs-Host'
-        self.power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['SATNOGS-HOST']['power_pin']),
-                None,
-                initial=None
-            )
-        )
+        super().__init__('SATNOGS-HOST')
 
 
 class RadioHost(Accessory):
@@ -126,15 +115,7 @@ class RadioHost(Accessory):
 
         Sets up the radio host power control with its configured GPIO power pin.
         """
-        super().__init__()
-        self.name = 'Radio-Host'
-        self.power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['RADIO-HOST']['power_pin']),
-                None,
-                initial=None
-            )
-        )
+        super().__init__('RADIO-HOST')
 
 
 class Rotator(Accessory):
@@ -150,15 +131,7 @@ class Rotator(Accessory):
         Sets up the antenna rotator power control with its configured GPIO power
         pin.
         """
-        super().__init__()
-        self.name = 'Rotator'
-        self.power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['ROTATOR']['power_pin']),
-                None,
-                initial=None
-            )
-        )
+        super().__init__('ROTATOR')
 
 
 class SDRB200(Accessory):
@@ -174,12 +147,4 @@ class SDRB200(Accessory):
         Sets up the USRP B200 SDR power control with its configured
         GPIO power pin.
         """
-        super().__init__()
-        self.name = 'SDR-B200'
-        self.power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['SDR-B200']['power_pin']),
-                None,
-                initial=None
-            )
-        )
+        super().__init__('SDR-B200')

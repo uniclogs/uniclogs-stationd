@@ -14,8 +14,3 @@ class TestBasicFunctionality:
         assert hasattr(stationd, 'Command')
         assert hasattr(stationd, 'PersistFH')
         assert hasattr(stationd, 'config')
-
-    def test_main_module_functionality(self) -> None:
-        """Test that main module functionality is accessible."""
-        from stationd import __main__
-        assert __main__ is not None

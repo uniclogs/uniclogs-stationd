@@ -1,11 +1,12 @@
+# ruff: noqa: T201
+
 """Entry point for the Station Daemon Package."""
 
 from . import stationd
 
-if __name__ == "__main__":
-    print('===============================')  # noqa: T201
-    print('Station Daemon Power Management')  # noqa: T201
-    print('===============================')  # noqa: T201
+print('===============================')
+print('Station Daemon Power Management')
+print('===============================')
 
-    sd = stationd.StationD()
-    sd.command_listener()
+sd = stationd.StationD()
+sd.command_listener()
