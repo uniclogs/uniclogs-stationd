@@ -48,11 +48,13 @@ class Command:
     PTT (Push-To-Talk) state tracking.
     """
 
-    def __init__(self,
-                 command: list[str],
-                 sock: socket.socket,
-                 addr: tuple[str, int],
-                 num_active_ptt: int | None = None) -> None:
+    def __init__(
+        self,
+        command: list[str],
+        sock: socket.socket,
+        addr: tuple[str, int],
+        num_active_ptt: int | None = None,
+    ) -> None:
         """Initialize a Command object."""
         self.command = command
         self.sock = sock
@@ -76,7 +78,6 @@ class PersistFH:
         # handle for efficient repeated reads from sysfs files. Ignoring SIM115.
         self.fh = Path(self.path).open('rb', buffering=0)  # noqa: SIM115
 
-
     def read(self) -> bytes:
         """Read from the file handle."""
         self.fh.seek(0)
@@ -98,10 +99,7 @@ class StationD:
         """
         # UDP Socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((
-            config['NETWORK']['udp_ip'],
-            int(config['NETWORK']['udp_port'])
-        ))
+        self.sock.bind((config['NETWORK']['udp_ip'], int(config['NETWORK']['udp_port'])))
         self.socket_lock = threading.Lock()
         # Amplifiers
         self.vhf = amp.VHF()
@@ -119,18 +117,18 @@ class StationD:
         self.shared: DictProxy[str, Any] = Manager().dict()
         self.shared['num_active_ptt'] = 0
         # Logger
-        logging.basicConfig(filename='activity.log',
-                            format='%(asctime)s\t%(message)s',
-                            datefmt='%Y-%m-%d %H:%M:%S',
-                            encoding='utf-8',
-                            level=logging.DEBUG)
-
+        logging.basicConfig(
+            filename='activity.log',
+            format='%(asctime)s\t%(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            encoding='utf-8',
+            level=logging.DEBUG,
+        )
 
     def shutdown_server(self) -> None:
         """Shut down the station daemon server."""
         logger.info('Closing connection...')
         self.sock.close()
-
 
     def command_handler(self, command_obj: Command) -> None:
         """Handle incoming commands and route them to appropriate devices."""
@@ -139,9 +137,16 @@ class StationD:
                 device = command_obj.command[0].replace('-', '_')
                 command_obj.num_active_ptt = self.shared['num_active_ptt']
 
-                if device in ['vhf', 'uhf', 'l_band', 'vu_tx_relay',
-                              'satnogs_host', 'radio_host', 'rotator',
-                              'sdr_b200']:
+                if device in [
+                    'vhf',
+                    'uhf',
+                    'l_band',
+                    'vu_tx_relay',
+                    'satnogs_host',
+                    'radio_host',
+                    'rotator',
+                    'sdr_b200',
+                ]:
                     command_parser(getattr(self, device), command_obj)
                     self.shared['num_active_ptt'] = command_obj.num_active_ptt
                 elif len(command_obj.command) == 1 and command_obj.command[0] == 'gettemp':
@@ -158,7 +163,6 @@ class StationD:
                 molly_guard_response(command_obj)
             except InvalidCommandError:
                 invalid_command_response(command_obj)
-
 
     def command_listener(self) -> None:
         """Listen for incoming UDP commands and spawn handler threads."""
@@ -178,6 +182,7 @@ class StationD:
 
 
 # Globals ----------------------------------------------------------------------
+
 
 def command_parser(device: 'acc.Accessory | amp.Amplifier', command_obj: Command) -> None:
     """Parse and execute commands for hardware devices."""
@@ -227,7 +232,7 @@ def get_state(gpiopin: GPIOPin | None) -> str:
 
 def read_temp(command_obj: Command, o: PersistFH) -> None:
     """Read temperature from a persistent file handle and send response."""
-    temp = float(o.read())/1000
+    temp = float(o.read()) / 1000
     temp_response(command_obj, temp)
 
 
@@ -244,6 +249,7 @@ def assert_out(gpiopin: GPIOPin) -> GPIOPin:
 
 
 # Response Handling ------------------------------------------------------------
+
 
 def success_response(command_obj: Command) -> None:
     """Send a success response message to the client."""
@@ -314,6 +320,7 @@ def temp_response(command_obj: Command, temp: float) -> None:
 
 
 # Exceptions -------------------------------------------------------------------
+
 
 class MollyGuardError(Exception):
     """Exception raised when molly guard protection is triggered.

@@ -37,7 +37,6 @@ class Amplifier:
         self.shared: DictProxy[str, Any] = self.manager.dict()
         self.shared['ptt_off_time'] = datetime.now(tz=UTC)
 
-
     def device_status(self, command_obj: 'sd.Command') -> None:
         p_state = 'LEFT' if sd.get_state(self.polarization) == 'ON' else 'RIGHT'
         status = (
@@ -48,7 +47,6 @@ class Amplifier:
             f'{command_obj.command[0]} polarization {p_state}\n'
         )
         sd.status_response(command_obj, status)
-
 
     def component_status(self, command_obj: 'sd.Command') -> None:
         try:
@@ -63,7 +61,6 @@ class Amplifier:
         except AttributeError as error:
             raise sd.InvalidCommandError(command_obj) from error
 
-
     def molly_guard(self, command_obj: 'sd.Command') -> bool:
         diff_sec = sd.calculate_diff_sec(self.molly_guard_time)
         if diff_sec is None or diff_sec > 20:
@@ -73,7 +70,6 @@ class Amplifier:
         self.molly_guard_time = None
         return True
 
-
     def tr_relay_on(self) -> None:
         if self.tr_relay is None:
             return
@@ -81,14 +77,12 @@ class Amplifier:
             return
         self.tr_relay.write(sd.ON)
 
-
     def tr_relay_off(self) -> None:
         if self.tr_relay is None:
             return
         if self.tr_relay.read() is sd.OFF:
             return
         self.tr_relay.write(sd.OFF)
-
 
     def rf_ptt_on(self, command_obj: 'sd.Command') -> None:
         if self.rf_ptt is None:
@@ -98,8 +92,10 @@ class Amplifier:
             return
         if self.pa_power is None or self.pa_power.read() is sd.OFF:
             raise sd.PTTConflictError(command_obj)
-        if (command_obj.num_active_ptt is not None and
-            command_obj.num_active_ptt >= sd.PTT_MAX_COUNT):
+        if (
+            command_obj.num_active_ptt is not None
+            and command_obj.num_active_ptt >= sd.PTT_MAX_COUNT
+        ):
             raise sd.MaxPTTError(command_obj)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
@@ -115,7 +111,6 @@ class Amplifier:
         sd.success_response(command_obj)
         if command_obj.num_active_ptt is not None:
             command_obj.num_active_ptt += 1
-
 
     def rf_ptt_off(self, command_obj: 'sd.Command') -> None:
         if self.rf_ptt is None:
@@ -136,7 +131,6 @@ class Amplifier:
         if self.tr_relay is not None:
             self.tr_relay_off()
 
-
     def pa_power_on(self, command_obj: 'sd.Command') -> None:
         if self.pa_power is None:
             raise sd.PTTConflictError(command_obj)
@@ -149,7 +143,6 @@ class Amplifier:
             if self.pa_power is not None:
                 self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
-
 
     def pa_power_off(self, command_obj: 'sd.Command') -> None:
         if self.pa_power is None:
@@ -173,7 +166,6 @@ class Amplifier:
         else:
             raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN))
 
-
     def lna_on(self, command_obj: 'sd.Command') -> None:
         if self.lna is None:
             sd.no_change_response(command_obj)
@@ -187,7 +179,6 @@ class Amplifier:
         if self.lna is not None:
             self.lna.write(sd.ON)
         sd.success_response(command_obj)
-
 
     def lna_off(self, command_obj: 'sd.Command') -> None:
         if self.lna is None:
@@ -203,7 +194,6 @@ class Amplifier:
         if command_obj.command[1] == 'lna':
             sd.success_response(command_obj)
 
-
     def polarization_left(self, command_obj: 'sd.Command') -> None:
         if self.polarization is None:
             sd.no_change_response(command_obj)
@@ -218,7 +208,6 @@ class Amplifier:
         if self.polarization is not None:
             self.polarization.write(sd.LEFT)
         sd.success_response(command_obj)
-
 
     def polarization_right(self, command_obj: 'sd.Command') -> None:
         if self.polarization is None:
@@ -252,39 +241,17 @@ class VHF(Amplifier):
         super().__init__()
         self.name = 'VHF'
         self.tr_relay = sd.assert_out(
-            GPIOPin(
-                int(sd.config['VHF']['tr_relay_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['VHF']['tr_relay_pin']), None, initial=None)
         )
         self.rf_ptt = sd.assert_out(
-            GPIOPin(
-                int(sd.config['VHF']['rf_ptt_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['VHF']['rf_ptt_pin']), None, initial=None)
         )
         self.pa_power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['VHF']['pa_power_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['VHF']['pa_power_pin']), None, initial=None)
         )
-        self.lna = sd.assert_out(
-            GPIOPin(
-                int(sd.config['VHF']['lna_pin']),
-                None,
-                initial=None
-            )
-        )
+        self.lna = sd.assert_out(GPIOPin(int(sd.config['VHF']['lna_pin']), None, initial=None))
         self.polarization = sd.assert_out(
-            GPIOPin(
-                int(sd.config['VHF']['polarization_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['VHF']['polarization_pin']), None, initial=None)
         )
 
 
@@ -304,39 +271,17 @@ class UHF(Amplifier):
         super().__init__()
         self.name = 'UHF'
         self.tr_relay = sd.assert_out(
-            GPIOPin(
-                int(sd.config['UHF']['tr_relay_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['UHF']['tr_relay_pin']), None, initial=None)
         )
         self.rf_ptt = sd.assert_out(
-            GPIOPin(
-                int(sd.config['UHF']['rf_ptt_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['UHF']['rf_ptt_pin']), None, initial=None)
         )
         self.pa_power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['UHF']['pa_power_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['UHF']['pa_power_pin']), None, initial=None)
         )
-        self.lna = sd.assert_out(
-            GPIOPin(
-                int(sd.config['UHF']['lna_pin']),
-                None,
-                initial=None
-            )
-        )
+        self.lna = sd.assert_out(GPIOPin(int(sd.config['UHF']['lna_pin']), None, initial=None))
         self.polarization = sd.assert_out(
-            GPIOPin(
-                int(sd.config['UHF']['polarization_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['UHF']['polarization_pin']), None, initial=None)
         )
 
 
@@ -361,16 +306,8 @@ class LBand(Amplifier):
         super().__init__()
         self.name = 'L-Band'
         self.rf_ptt = sd.assert_out(
-            GPIOPin(
-                int(sd.config['L-BAND']['rf_ptt_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['L-BAND']['rf_ptt_pin']), None, initial=None)
         )
         self.pa_power = sd.assert_out(
-            GPIOPin(
-                int(sd.config['L-BAND']['pa_power_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config['L-BAND']['pa_power_pin']), None, initial=None)
         )

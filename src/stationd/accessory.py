@@ -17,18 +17,12 @@ class Accessory:
         pin.
         """
         self.power = sd.assert_out(
-            GPIOPin(
-                int(sd.config[config_section]['power_pin']),
-                None,
-                initial=None
-            )
+            GPIOPin(int(sd.config[config_section]['power_pin']), None, initial=None)
         )
-
 
     def device_status(self, command_obj: 'sd.Command') -> None:
         status = f'{command_obj.command[0]} power {sd.get_state(self.power)}\n'
         sd.status_response(command_obj, status)
-
 
     def component_status(self, command_obj: 'sd.Command') -> None:
         try:
@@ -38,13 +32,13 @@ class Accessory:
         except AttributeError as error:
             raise sd.InvalidCommandError(command_obj) from error
 
-
     def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
-        if (isinstance(self, VUTxRelay) and
-            command_obj.num_active_ptt is not None and
-            command_obj.num_active_ptt > 0):
+        if (
+            isinstance(self, VUTxRelay)
+            and command_obj.num_active_ptt is not None
+            and command_obj.num_active_ptt > 0
+        ):
             raise sd.PTTConflictError(command_obj)
-
 
     def power_on(self, command_obj: 'sd.Command') -> None:
         # VU TX Relay change cannot happen while any PTT is active
@@ -57,7 +51,6 @@ class Accessory:
             return
         self.power.write(sd.ON)
         sd.success_response(command_obj)
-
 
     def power_off(self, command_obj: 'sd.Command') -> None:
         # VU TX Relay change cannot happen while any PTT is active
