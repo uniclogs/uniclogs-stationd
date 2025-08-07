@@ -1,5 +1,4 @@
 import time
-from datetime import UTC, datetime
 from multiprocessing import Manager
 from typing import TYPE_CHECKING, Any
 
@@ -30,12 +29,12 @@ class Amplifier:
         self.pa_power: GPIOPin | None = None
         self.lna: GPIOPin | None = None
         self.polarization: GPIOPin | None = None
-        self.molly_guard_time: datetime | None = None
+        self.molly_guard_time: float | None = None
 
         # Shared data
         self.manager = Manager()
         self.shared: DictProxy[str, Any] = self.manager.dict()
-        self.shared['ptt_off_time'] = datetime.now(tz=UTC)
+        self.shared['ptt_off_time'] = time.time()
 
     def device_status(self, command_obj: 'sd.Command') -> None:
         p_state = 'LEFT' if sd.get_state(self.polarization) == 'ON' else 'RIGHT'
@@ -64,7 +63,7 @@ class Amplifier:
     def molly_guard(self, command_obj: 'sd.Command') -> bool:
         diff_sec = sd.calculate_diff_sec(self.molly_guard_time)
         if diff_sec is None or diff_sec > 20:
-            self.molly_guard_time = datetime.now(tz=UTC)
+            self.molly_guard_time = time.time()
             raise sd.MollyGuardError(command_obj)
         # reset timer to none
         self.molly_guard_time = None
@@ -118,7 +117,7 @@ class Amplifier:
         self.rf_ptt.write(sd.OFF)
         sd.success_response(command_obj)
         #  set time ptt turned off
-        self.shared['ptt_off_time'] = datetime.now(tz=UTC)
+        self.shared['ptt_off_time'] = time.time()
         command_obj.num_active_ptt -= 1
         # make sure num_active_ptt never falls below 0
         command_obj.num_active_ptt = max(command_obj.num_active_ptt, 0)

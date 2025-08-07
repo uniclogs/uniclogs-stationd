@@ -9,7 +9,7 @@ import configparser
 import logging
 import socket
 import threading
-from datetime import UTC, datetime
+import time
 from multiprocessing import Manager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -188,13 +188,13 @@ def command_parser(device: 'acc.Accessory | amp.Amplifier', command_obj: Command
         raise InvalidCommandError(command_obj)
 
 
-def calculate_diff_sec(subtrahend: datetime | None) -> float | None:
+def calculate_diff_sec(subtrahend: float | None) -> float | None:
     """Calculate the time difference in seconds from a past datetime to now."""
     if subtrahend is None:
         return None
-    now = datetime.now(tz=UTC)
-    diff = now - subtrahend
-    return diff.total_seconds()
+
+    now = time.time()
+    return now - subtrahend
 
 
 def log(command_obj: Command, message: str) -> None:
