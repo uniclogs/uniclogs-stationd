@@ -18,17 +18,30 @@ class Amplifier:
     polarization switching.
     """
 
-    def __init__(self) -> None:
-        """Initialize a new Amplifier instance.
-
-        The specific GPIO pins will be configured by subclasses.
-        """
-        self.name: str | None = None
-        self.tr_relay: GPIOPin | None = None
-        self.rf_ptt: GPIOPin | None = None
-        self.pa_power: GPIOPin | None = None
-        self.lna: GPIOPin | None = None
-        self.polarization: GPIOPin | None = None
+    def __init__(
+        self,
+        rf_ptt_pin: int,
+        pa_power_pin: int,
+        tr_relay_pin: int | None = None,
+        lna_pin: int | None = None,
+        polarization_pin: int | None = None,
+    ) -> None:
+        """Initialize a new Amplifier instance."""
+        self.rf_ptt: GPIOPin = sd.assert_out(GPIOPin(rf_ptt_pin, None, initial=None))
+        self.pa_power: GPIOPin = sd.assert_out(GPIOPin(pa_power_pin, None, initial=None))
+        self.tr_relay: GPIOPin | None = (
+            sd.assert_out(GPIOPin(tr_relay_pin, None, initial=None))
+            if tr_relay_pin is not None
+            else None
+        )
+        self.lna: GPIOPin | None = (
+            sd.assert_out(GPIOPin(lna_pin, None, initial=None)) if lna_pin is not None else None
+        )
+        self.polarization: GPIOPin | None = (
+            sd.assert_out(GPIOPin(polarization_pin, None, initial=None))
+            if polarization_pin is not None
+            else None
+        )
         self.molly_guard_time: float | None = None
 
         # Shared data
@@ -84,12 +97,10 @@ class Amplifier:
         self.tr_relay.write(sd.OFF)
 
     def rf_ptt_on(self, command_obj: 'sd.Command') -> None:
-        if self.rf_ptt is None:
-            raise sd.PTTConflictError(command_obj)
         if self.rf_ptt.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
-        if self.pa_power is None or self.pa_power.read() is sd.OFF:
+        if self.pa_power.read() is sd.OFF:
             raise sd.PTTConflictError(command_obj)
         if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
             raise sd.MaxPTTError(command_obj)
@@ -102,15 +113,11 @@ class Amplifier:
             self.lna_off(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
-        if self.rf_ptt is not None:
-            self.rf_ptt.write(sd.ON)
+        self.rf_ptt.write(sd.ON)
         sd.success_response(command_obj)
         command_obj.num_active_ptt += 1
 
     def rf_ptt_off(self, command_obj: 'sd.Command') -> None:
-        if self.rf_ptt is None:
-            sd.no_change_response(command_obj)
-            return
         if self.rf_ptt.read() is sd.OFF:
             sd.no_change_response(command_obj)
             return
@@ -126,34 +133,27 @@ class Amplifier:
             self.tr_relay_off()
 
     def pa_power_on(self, command_obj: 'sd.Command') -> None:
-        if self.pa_power is None:
-            raise sd.PTTConflictError(command_obj)
         if self.pa_power.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
         if self.molly_guard(command_obj):
             if self.tr_relay is not None:
                 self.tr_relay_on()
-            if self.pa_power is not None:
-                self.pa_power.write(sd.ON)
+            self.pa_power.write(sd.ON)
             sd.success_response(command_obj)
 
     def pa_power_off(self, command_obj: 'sd.Command') -> None:
-        if self.pa_power is None:
-            sd.no_change_response(command_obj)
-            return
         if self.pa_power.read() is sd.OFF:
             sd.no_change_response(command_obj)
             return
-        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
         #  Check PTT off for at least 2 minutes
         diff_sec = sd.calculate_diff_sec(self.shared['ptt_off_time'])
         if diff_sec is not None and diff_sec > sd.PTT_COOLDOWN:
             if self.tr_relay is not None:
                 self.tr_relay_off()
-            if self.pa_power is not None:
-                self.pa_power.write(sd.OFF)
+            self.pa_power.write(sd.OFF)
             sd.success_response(command_obj)
         elif diff_sec is not None:
             raise sd.PTTCooldownError(round(sd.PTT_COOLDOWN - diff_sec))
@@ -168,10 +168,9 @@ class Amplifier:
             sd.no_change_response(command_obj)
             return
         #  Fail if PTT is on
-        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
-        if self.lna is not None:
-            self.lna.write(sd.ON)
+        self.lna.write(sd.ON)
         sd.success_response(command_obj)
 
     def lna_off(self, command_obj: 'sd.Command') -> None:
@@ -195,12 +194,11 @@ class Amplifier:
         if self.polarization.read() is sd.LEFT:
             sd.no_change_response(command_obj)
             return
-        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
-        if self.polarization is not None:
-            self.polarization.write(sd.LEFT)
+        self.polarization.write(sd.LEFT)
         sd.success_response(command_obj)
 
     def polarization_right(self, command_obj: 'sd.Command') -> None:
@@ -210,12 +208,11 @@ class Amplifier:
         if self.polarization.read() is sd.RIGHT:
             sd.no_change_response(command_obj)
             return
-        if self.rf_ptt is not None and self.rf_ptt.read() is sd.ON:
+        if self.rf_ptt.read() is sd.ON:
             raise sd.PTTConflictError(command_obj)
         # brief cooldown
         time.sleep(sd.SLEEP_TIMER)
-        if self.polarization is not None:
-            self.polarization.write(sd.RIGHT)
+        self.polarization.write(sd.RIGHT)
         sd.success_response(command_obj)
 
 
@@ -232,20 +229,12 @@ class VHF(Amplifier):
 
         Sets up the VHF amplifier with all its GPIO control pins.
         """
-        super().__init__()
-        self.name = 'VHF'
-        self.tr_relay = sd.assert_out(
-            GPIOPin(int(sd.config['VHF']['tr_relay_pin']), None, initial=None)
-        )
-        self.rf_ptt = sd.assert_out(
-            GPIOPin(int(sd.config['VHF']['rf_ptt_pin']), None, initial=None)
-        )
-        self.pa_power = sd.assert_out(
-            GPIOPin(int(sd.config['VHF']['pa_power_pin']), None, initial=None)
-        )
-        self.lna = sd.assert_out(GPIOPin(int(sd.config['VHF']['lna_pin']), None, initial=None))
-        self.polarization = sd.assert_out(
-            GPIOPin(int(sd.config['VHF']['polarization_pin']), None, initial=None)
+        super().__init__(
+            rf_ptt_pin=int(sd.config['VHF']['rf_ptt_pin']),
+            pa_power_pin=int(sd.config['VHF']['pa_power_pin']),
+            tr_relay_pin=int(sd.config['VHF']['tr_relay_pin']),
+            lna_pin=int(sd.config['VHF']['lna_pin']),
+            polarization_pin=int(sd.config['VHF']['polarization_pin']),
         )
 
 
@@ -262,20 +251,12 @@ class UHF(Amplifier):
 
         Sets up the UHF amplifier with all its GPIO control pins.
         """
-        super().__init__()
-        self.name = 'UHF'
-        self.tr_relay = sd.assert_out(
-            GPIOPin(int(sd.config['UHF']['tr_relay_pin']), None, initial=None)
-        )
-        self.rf_ptt = sd.assert_out(
-            GPIOPin(int(sd.config['UHF']['rf_ptt_pin']), None, initial=None)
-        )
-        self.pa_power = sd.assert_out(
-            GPIOPin(int(sd.config['UHF']['pa_power_pin']), None, initial=None)
-        )
-        self.lna = sd.assert_out(GPIOPin(int(sd.config['UHF']['lna_pin']), None, initial=None))
-        self.polarization = sd.assert_out(
-            GPIOPin(int(sd.config['UHF']['polarization_pin']), None, initial=None)
+        super().__init__(
+            rf_ptt_pin=int(sd.config['UHF']['rf_ptt_pin']),
+            pa_power_pin=int(sd.config['UHF']['pa_power_pin']),
+            tr_relay_pin=int(sd.config['UHF']['tr_relay_pin']),
+            lna_pin=int(sd.config['UHF']['lna_pin']),
+            polarization_pin=int(sd.config['UHF']['polarization_pin']),
         )
 
 
@@ -297,11 +278,7 @@ class LBand(Amplifier):
         Note: L-Band amplifier does not include TR relay, LNA, or polarization
               controls.
         """
-        super().__init__()
-        self.name = 'L-Band'
-        self.rf_ptt = sd.assert_out(
-            GPIOPin(int(sd.config['L-BAND']['rf_ptt_pin']), None, initial=None)
-        )
-        self.pa_power = sd.assert_out(
-            GPIOPin(int(sd.config['L-BAND']['pa_power_pin']), None, initial=None)
+        super().__init__(
+            rf_ptt_pin=int(sd.config['L-BAND']['rf_ptt_pin']),
+            pa_power_pin=int(sd.config['L-BAND']['pa_power_pin']),
         )
