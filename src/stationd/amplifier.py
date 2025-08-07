@@ -93,8 +93,7 @@ class Amplifier:
         if self.pa_power is None or self.pa_power.read() is sd.OFF:
             raise sd.PTTConflictError(command_obj)
         if (
-            command_obj.num_active_ptt is not None
-            and command_obj.num_active_ptt >= sd.PTT_MAX_COUNT
+            command_obj.num_active_ptt >= sd.PTT_MAX_COUNT
         ):
             raise sd.MaxPTTError(command_obj)
         # Enforce tr-relay and ptt are same state
@@ -109,8 +108,7 @@ class Amplifier:
         if self.rf_ptt is not None:
             self.rf_ptt.write(sd.ON)
         sd.success_response(command_obj)
-        if command_obj.num_active_ptt is not None:
-            command_obj.num_active_ptt += 1
+        command_obj.num_active_ptt += 1
 
     def rf_ptt_off(self, command_obj: 'sd.Command') -> None:
         if self.rf_ptt is None:
@@ -123,10 +121,9 @@ class Amplifier:
         sd.success_response(command_obj)
         #  set time ptt turned off
         self.shared['ptt_off_time'] = datetime.now(tz=UTC)
-        if command_obj.num_active_ptt is not None:
-            command_obj.num_active_ptt -= 1
-            # make sure num_active_ptt never falls below 0
-            command_obj.num_active_ptt = max(command_obj.num_active_ptt, 0)
+        command_obj.num_active_ptt -= 1
+        # make sure num_active_ptt never falls below 0
+        command_obj.num_active_ptt = max(command_obj.num_active_ptt, 0)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:
             self.tr_relay_off()

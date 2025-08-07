@@ -53,7 +53,7 @@ class Command:
         command: list[str],
         sock: socket.socket,
         addr: tuple[str, int],
-        num_active_ptt: int | None = None,
+        num_active_ptt: int,
     ) -> None:
         """Initialize a Command object."""
         self.command = command
@@ -135,7 +135,6 @@ class StationD:
         with self.socket_lock:
             try:
                 device = command_obj.command[0].replace('-', '_')
-                command_obj.num_active_ptt = self.shared['num_active_ptt']
 
                 if device in [
                     'vhf',
@@ -171,7 +170,12 @@ class StationD:
                 try:
                     data, client_address = self.sock.recvfrom(1024)
                     command_data = data.decode().strip('\n').strip('\r').split()
-                    command_obj = Command(command=command_data, sock=self.sock, addr=client_address)
+                    command_obj = Command(
+                        command=command_data,
+                        sock=self.sock,
+                        addr=client_address,
+                        num_active_ptt=self.shared['num_active_ptt']
+                    )
                     c_thread = threading.Thread(target=self.command_handler, args=(command_obj,))
                     c_thread.daemon = True
                     c_thread.start()

@@ -35,7 +35,6 @@ class Accessory:
     def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
         if (
             isinstance(self, VUTxRelay)
-            and command_obj.num_active_ptt is not None
             and command_obj.num_active_ptt > 0
         ):
             raise sd.PTTConflictError(command_obj)
