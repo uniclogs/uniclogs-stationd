@@ -33,10 +33,7 @@ class Accessory:
             raise sd.InvalidCommandError(command_obj) from error
 
     def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
-        if (
-            isinstance(self, VUTxRelay)
-            and command_obj.num_active_ptt > 0
-        ):
+        if isinstance(self, VUTxRelay) and command_obj.num_active_ptt > 0:
             raise sd.PTTConflictError(command_obj)
 
     def power_on(self, command_obj: 'sd.Command') -> None:

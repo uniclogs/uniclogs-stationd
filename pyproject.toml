@@ -15,6 +15,9 @@ authors = [
 
 dependencies = []
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.optional-dependencies]
 dev = [
     "sphinx",
@@ -50,6 +53,7 @@ line-length = 100
 
 [tool.ruff.format]
 quote-style = "preserve"
+exclude = ["src/stationd/gpio/**"]
 
 [tool.ruff.lint]
 select = ["ALL"]

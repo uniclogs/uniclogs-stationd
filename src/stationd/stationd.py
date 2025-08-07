@@ -38,7 +38,8 @@ PTT_COOLDOWN = 120  # In seconds
 SLEEP_TIMER = 0.1
 PTT_MAX_COUNT = 1
 
-TEMP_PATH = '/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input'  # UniClOGS UPB sensor
+# UniClOGS UPB sensor
+TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
 
 
 class Command:
@@ -60,28 +61,6 @@ class Command:
         self.sock = sock
         self.addr = addr
         self.num_active_ptt = num_active_ptt
-
-
-class PersistFH:
-    """Persistent file handle for reading system files.
-
-    Provides access to sysfs with automatic seeking to the beginning for
-    repeated reads.
-    """
-
-    def __init__(self, path: str) -> None:
-        """Initialize a persistent file handle."""
-        self.path = path
-        if not self.path.startswith('/sys'):
-            raise RuntimeError('Using this on non-sysfs files may produce unexpected results')
-        # PersistFH is specifically designed to maintain a persistent file
-        # handle for efficient repeated reads from sysfs files. Ignoring SIM115.
-        self.fh = Path(self.path).open('rb', buffering=0)  # noqa: SIM115
-
-    def read(self) -> bytes:
-        """Read from the file handle."""
-        self.fh.seek(0)
-        return self.fh.read()[:-1]
 
 
 class StationD:
@@ -112,7 +91,7 @@ class StationD:
         self.rotator = acc.Rotator()
         self.sdr_b200 = acc.SDRB200()
         # Temperature sensor
-        self.pi_cpu = PersistFH(TEMP_PATH)
+        self.pi_cpu = TEMP_PATH
         # Shared dict
         self.shared: DictProxy[str, Any] = Manager().dict()
         self.shared['num_active_ptt'] = 0
@@ -174,7 +153,7 @@ class StationD:
                         command=command_data,
                         sock=self.sock,
                         addr=client_address,
-                        num_active_ptt=self.shared['num_active_ptt']
+                        num_active_ptt=self.shared['num_active_ptt'],
                     )
                     c_thread = threading.Thread(target=self.command_handler, args=(command_obj,))
                     c_thread.daemon = True
@@ -234,9 +213,11 @@ def get_state(gpiopin: GPIOPin | None) -> str:
     return state
 
 
-def read_temp(command_obj: Command, o: PersistFH) -> None:
+def read_temp(command_obj: Command, path: Path) -> None:
     """Read temperature from a persistent file handle and send response."""
-    temp = float(o.read()) / 1000
+    with path.open('rb', buffering=0) as o:
+        temp = float(o.read()) / 1000
+
     temp_response(command_obj, temp)
 
 

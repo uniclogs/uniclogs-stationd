@@ -92,9 +92,7 @@ class Amplifier:
             return
         if self.pa_power is None or self.pa_power.read() is sd.OFF:
             raise sd.PTTConflictError(command_obj)
-        if (
-            command_obj.num_active_ptt >= sd.PTT_MAX_COUNT
-        ):
+        if command_obj.num_active_ptt >= sd.PTT_MAX_COUNT:
             raise sd.MaxPTTError(command_obj)
         # Enforce tr-relay and ptt are same state
         if self.tr_relay is not None:

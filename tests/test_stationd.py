@@ -12,5 +12,4 @@ class TestBasicFunctionality:
         """Test that stationd module has expected classes and constants."""
         assert hasattr(stationd, 'StationD')
         assert hasattr(stationd, 'Command')
-        assert hasattr(stationd, 'PersistFH')
         assert hasattr(stationd, 'config')
