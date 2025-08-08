@@ -20,45 +20,26 @@ class Accessory:
             GPIOPin(int(sd.config[config_section]['power_pin']), None, initial=None)
         )
 
-    def device_status(self, command_obj: 'sd.Command') -> None:
-        status = f'{command_obj.command[0]} power {sd.get_state(self.power)}\n'
-        sd.status_response(command_obj, status)
+    def device_status(self, command: list[str]) -> str:
+        return f'{command[0]} power {sd.get_state(self.power)}\n'
 
-    def component_status(self, command_obj: 'sd.Command') -> None:
+    def component_status(self, command: list[str]) -> str:
         try:
-            component = getattr(self, command_obj.command[1].replace('-', '_'))
-            status = sd.get_status(component, command_obj)
-            sd.status_response(command_obj, status)
+            component = getattr(self, command[1].replace('-', '_'))
         except AttributeError as error:
-            raise sd.InvalidCommandError(command_obj) from error
+            raise sd.InvalidCommandError from error
 
-    def vu_tx_relay_ptt_check(self, command_obj: 'sd.Command') -> None:
-        if isinstance(self, VUTxRelay) and command_obj.num_active_ptt > 0:
-            raise sd.PTTConflictError(command_obj)
+        return sd.get_status(component, command)
 
-    def power_on(self, command_obj: 'sd.Command') -> None:
-        # VU TX Relay change cannot happen while any PTT is active
-        self.vu_tx_relay_ptt_check(command_obj)
-        if self.power is None:
-            sd.no_change_response(command_obj)
-            return
-        if self.power.read() is sd.ON:
-            sd.no_change_response(command_obj)
-            return
+    def power_on(self) -> None:
+        if self.power.read() == sd.ON:
+            raise sd.NoChangeError
         self.power.write(sd.ON)
-        sd.success_response(command_obj)
 
-    def power_off(self, command_obj: 'sd.Command') -> None:
-        # VU TX Relay change cannot happen while any PTT is active
-        self.vu_tx_relay_ptt_check(command_obj)
-        if self.power is None:
-            sd.no_change_response(command_obj)
-            return
-        if self.power.read() is sd.OFF:
-            sd.no_change_response(command_obj)
-            return
+    def power_off(self) -> None:
+        if self.power.read() == sd.OFF:
+            raise sd.NoChangeError
         self.power.write(sd.OFF)
-        sd.success_response(command_obj)
 
 
 class VUTxRelay(Accessory):
@@ -68,12 +49,26 @@ class VUTxRelay(Accessory):
     paths.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, active_ptt: 'sd.ActivePTT') -> None:
         """Initialize the VHF/UHF TX Relay accessory.
 
         Sets up the VU TX relay with its configured GPIO power pin.
         """
         super().__init__('VU-TX-RELAY')
+        self.active_ptt = active_ptt
+
+    def _ptt_check(self) -> None:
+        # VU TX Relay change cannot happen while any PTT is active
+        if self.active_ptt.count > 0:
+            raise sd.PTTConflictError
+
+    def power_on(self) -> None:
+        self._ptt_check()
+        super().power_on()
+
+    def power_off(self) -> None:
+        self._ptt_check()
+        super().power_off()
 
 
 class SatnogsHost(Accessory):
