@@ -38,11 +38,16 @@ class TxAmplifier:
     That have a RF PTT (Push-To-Talk) switch and a power amplifier (PA).
     """
 
-    def __init__(self, active_ptt: 'sd.ActivePTT', rf_ptt_pin: int, pa_power_pin: int) -> None:
+    def __init__(self, active_ptt: 'sd.ActivePTT', section: str) -> None:
         """Initialize a new Amplifier instance."""
         self.active_ptt = active_ptt
-        self.rf_ptt = sd.assert_out(GPIOPin(rf_ptt_pin, None, initial=None))
-        self.pa_power = sd.assert_out(GPIOPin(pa_power_pin, None, initial=None))
+
+        self.rf_ptt = sd.assert_out(
+            GPIOPin(int(sd.config[section]['rf_ptt_pin']), None, initial=None)
+        )
+        self.pa_power = sd.assert_out(
+            GPIOPin(int(sd.config[section]['pa_power_pin']), None, initial=None)
+        )
 
         self.molly_guard_time = time.time() - MOLLY_TIME
         self.ptt_off_time = time.time() - PTT_COOLDOWN
@@ -112,20 +117,16 @@ class RxTxAmplifier(TxAmplifier):
     polarization switching.
     """
 
-    def __init__(  # noqa: PLR0913
-        self,
-        active_ptt: 'sd.ActivePTT',
-        rf_ptt_pin: int,
-        pa_power_pin: int,
-        tr_relay_pin: int,
-        lna_pin: int,
-        polarization_pin: int,
-    ) -> None:
+    def __init__(self, active_ptt: 'sd.ActivePTT', section: str) -> None:
         """Initialize a new Amplifier instance."""
-        super().__init__(active_ptt, rf_ptt_pin, pa_power_pin)
-        self.tr_relay = sd.assert_out(GPIOPin(tr_relay_pin, None, initial=None))
-        self.lna = sd.assert_out(GPIOPin(lna_pin, None, initial=None))
-        self.polarization = sd.assert_out(GPIOPin(polarization_pin, None, initial=None))
+        super().__init__(active_ptt, section)
+        self.tr_relay = sd.assert_out(
+            GPIOPin(int(sd.config[section]['tr_relay_pin']), None, initial=None)
+        )
+        self.lna = sd.assert_out(GPIOPin(int(sd.config[section]['lna_pin']), None, initial=None))
+        self.polarization = sd.assert_out(
+            GPIOPin(int(sd.config[section]['polarization_pin']), None, initial=None)
+        )
 
     def device_status(self, command: list[str]) -> str:
         p_state = 'LEFT' if self.polarization.read() == LEFT else 'RIGHT'
@@ -217,14 +218,7 @@ class VHF(RxTxAmplifier):
 
         Sets up the VHF amplifier with all its GPIO control pins.
         """
-        super().__init__(
-            active_ptt,
-            rf_ptt_pin=int(sd.config['VHF']['rf_ptt_pin']),
-            pa_power_pin=int(sd.config['VHF']['pa_power_pin']),
-            tr_relay_pin=int(sd.config['VHF']['tr_relay_pin']),
-            lna_pin=int(sd.config['VHF']['lna_pin']),
-            polarization_pin=int(sd.config['VHF']['polarization_pin']),
-        )
+        super().__init__(active_ptt, 'VHF')
 
 
 class UHF(RxTxAmplifier):
@@ -240,14 +234,7 @@ class UHF(RxTxAmplifier):
 
         Sets up the UHF amplifier with all its GPIO control pins.
         """
-        super().__init__(
-            active_ptt,
-            rf_ptt_pin=int(sd.config['UHF']['rf_ptt_pin']),
-            pa_power_pin=int(sd.config['UHF']['pa_power_pin']),
-            tr_relay_pin=int(sd.config['UHF']['tr_relay_pin']),
-            lna_pin=int(sd.config['UHF']['lna_pin']),
-            polarization_pin=int(sd.config['UHF']['polarization_pin']),
-        )
+        super().__init__(active_ptt, 'UHF')
 
 
 class LBand(TxAmplifier):
@@ -268,8 +255,4 @@ class LBand(TxAmplifier):
         Note: L-Band amplifier does not include TR relay, LNA, or polarization
               controls.
         """
-        super().__init__(
-            active_ptt,
-            rf_ptt_pin=int(sd.config['L-BAND']['rf_ptt_pin']),
-            pa_power_pin=int(sd.config['L-BAND']['pa_power_pin']),
-        )
+        super().__init__(active_ptt, 'L-BAND')
