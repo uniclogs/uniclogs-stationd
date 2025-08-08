@@ -162,8 +162,7 @@ class Amplifier:
 
     def lna_on(self, command_obj: 'sd.Command') -> None:
         if self.lna is None:
-            sd.no_change_response(command_obj)
-            return
+            raise sd.InvalidCommandError(command_obj)
         if self.lna.read() is sd.ON:
             sd.no_change_response(command_obj)
             return
@@ -176,7 +175,7 @@ class Amplifier:
     def lna_off(self, command_obj: 'sd.Command') -> None:
         if self.lna is None:
             if command_obj.command[1] == 'lna':
-                sd.no_change_response(command_obj)
+                raise sd.InvalidCommandError(command_obj)
             return
         # only send response if called directly via command
         if self.lna.read() is sd.OFF and command_obj.command[1] == 'lna':
@@ -189,8 +188,7 @@ class Amplifier:
 
     def polarization_left(self, command_obj: 'sd.Command') -> None:
         if self.polarization is None:
-            sd.no_change_response(command_obj)
-            return
+            raise sd.InvalidCommandError(command_obj)
         if self.polarization.read() is sd.LEFT:
             sd.no_change_response(command_obj)
             return
@@ -203,8 +201,7 @@ class Amplifier:
 
     def polarization_right(self, command_obj: 'sd.Command') -> None:
         if self.polarization is None:
-            sd.no_change_response(command_obj)
-            return
+            raise sd.InvalidCommandError(command_obj)
         if self.polarization.read() is sd.RIGHT:
             sd.no_change_response(command_obj)
             return
