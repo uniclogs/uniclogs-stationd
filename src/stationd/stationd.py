@@ -9,7 +9,6 @@ import configparser
 import logging
 import socket
 import threading
-import time
 from multiprocessing import Manager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -31,12 +30,6 @@ config.read('config.ini')
 # Constants
 ON = HIGH
 OFF = LOW
-LEFT = HIGH
-RIGHT = LOW
-
-PTT_COOLDOWN = 120  # In seconds
-SLEEP_TIMER = 0.1
-PTT_MAX_COUNT = 1
 
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
@@ -142,14 +135,16 @@ class StationD:
                     invalid_command_response(command_obj)
             except PTTConflictError:
                 ptt_conflict_response(command_obj)
-            except PTTCooldownError as e:
+            except amp.PTTCooldownError as e:
                 ptt_cooldown_response(command_obj, e.seconds)
-            except MollyGuardError:
+            except amp.MollyGuardError:
                 molly_guard_response(command_obj)
-            except MaxPTTError:
+            except amp.MaxPTTError:
                 molly_guard_response(command_obj)
             except InvalidCommandError:
                 invalid_command_response(command_obj)
+            except NoChangeError:
+                no_change_response(command_obj)
 
     def command_listener(self) -> None:
         """Listen for incoming UDP commands and spawn handler threads."""
@@ -172,7 +167,7 @@ class StationD:
 # Globals ----------------------------------------------------------------------
 
 
-def command_parser(device: 'acc.Accessory | amp.Amplifier', command_obj: Command) -> None:
+def command_parser(device: 'acc.Accessory | amp.TxAmplifier', command_obj: Command) -> None:
     """Parse and execute commands for hardware devices."""
     if len(command_obj.command) == 3:
         # Component Status command
@@ -193,29 +188,16 @@ def command_parser(device: 'acc.Accessory | amp.Amplifier', command_obj: Command
         raise InvalidCommandError(command_obj)
 
 
-def calculate_diff_sec(subtrahend: float | None) -> float | None:
-    """Calculate the time difference in seconds from a past datetime to now."""
-    if subtrahend is None:
-        return None
-
-    now = time.time()
-    return now - subtrahend
-
-
 def log(command_obj: Command, message: str) -> None:
     """Log a debug message with client address information."""
     logger.debug('ADDRESS: %s, %s', command_obj.addr, message.strip())
 
 
-def get_state(gpiopin: GPIOPin | None) -> str:
+def get_state(gpiopin: GPIOPin) -> str:
     """Get the current state of a given GPIO pin."""
-    if gpiopin is None:
-        state = 'N/A'
-    elif gpiopin.read() is ON:
-        state = 'ON'
-    else:
-        state = 'OFF'
-    return state
+    if gpiopin.read() == ON:
+        return 'ON'
+    return 'OFF'
 
 
 def read_temp(command_obj: Command, path: Path) -> None:
@@ -226,7 +208,7 @@ def read_temp(command_obj: Command, path: Path) -> None:
     temp_response(command_obj, temp)
 
 
-def get_status(gpiopin: GPIOPin | None, command_obj: Command) -> str:
+def get_status(gpiopin: GPIOPin, command_obj: Command) -> str:
     """Get a formatted status string for a GPIO pin."""
     return f'{command_obj.command[0]} {command_obj.command[1]} {get_state(gpiopin)}\n'
 
@@ -312,14 +294,6 @@ def temp_response(command_obj: Command, temp: float) -> None:
 # Exceptions -------------------------------------------------------------------
 
 
-class MollyGuardError(Exception):
-    """Exception raised when molly guard protection is triggered.
-
-    Used to prevent accidental execution of potentially dangerous commands by
-    requiring confirmation within a time window.
-    """
-
-
 class PTTConflictError(Exception):
     """Exception raised when PTT operation conflicts with current state.
 
@@ -328,25 +302,12 @@ class PTTConflictError(Exception):
     """
 
 
-class MaxPTTError(Exception):
-    """Exception raised when maximum PTT connections are exceeded.
-
-    Prevents exceeding the configured maximum number of simultaneous PTT
-    connections.
-    """
-
-
-class PTTCooldownError(Exception):
-    """Exception raised when PTT cooldown period is not satisfied.
-
-    Enforces mandatory waiting period between PTT operations for hardware
-    protection.
-    """
-
-    def __init__(self, seconds: float) -> None:
-        """Initialize Push-to-Talk Cooldown exception."""
-        self.seconds = seconds
-
-
 class InvalidCommandError(Exception):
     """Exception raised for unrecognized or malformed commands."""
+
+
+class NoChangeError(Exception):
+    """Exception raised when a component is commanded to its current state.
+
+    Not really an error but it does make control flow easier
+    """
