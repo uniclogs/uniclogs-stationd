@@ -12,7 +12,7 @@ import threading
 import time
 from multiprocessing import Manager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from . import accessory as acc
 from . import amplifier as amp
@@ -93,7 +93,7 @@ class StationD:
         # Temperature sensor
         self.pi_cpu = TEMP_PATH
         # Shared dict
-        self.shared: DictProxy[str, Any] = Manager().dict()
+        self.shared: DictProxy[str, int] = Manager().dict()
         self.shared['num_active_ptt'] = 0
         # Logger
         logging.basicConfig(

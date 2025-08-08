@@ -1,6 +1,6 @@
 import time
 from multiprocessing import Manager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from multiprocessing.managers import DictProxy
@@ -46,7 +46,7 @@ class Amplifier:
 
         # Shared data
         self.manager = Manager()
-        self.shared: DictProxy[str, Any] = self.manager.dict()
+        self.shared: DictProxy[str, float] = self.manager.dict()
         self.shared['ptt_off_time'] = time.time()
 
     def device_status(self, command_obj: 'sd.Command') -> None:
