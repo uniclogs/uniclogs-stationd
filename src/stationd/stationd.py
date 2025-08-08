@@ -109,9 +109,18 @@ class StationD:
         logger.info('Closing connection...')
         self.sock.close()
 
-    def command_handler(self, command_obj: Command) -> None:
+    def command_handler(
+        self, command_data: list[str], sock: socket.socket, client_address: tuple[str, int]
+    ) -> None:
         """Handle incoming commands and route them to appropriate devices."""
         with self.socket_lock:
+            command_obj = Command(
+                command=command_data,
+                sock=sock,
+                addr=client_address,
+                num_active_ptt=self.shared['num_active_ptt'],
+            )
+
             try:
                 device = command_obj.command[0].replace('-', '_')
 
@@ -149,13 +158,9 @@ class StationD:
                 try:
                     data, client_address = self.sock.recvfrom(1024)
                     command_data = data.decode().strip('\n').strip('\r').split()
-                    command_obj = Command(
-                        command=command_data,
-                        sock=self.sock,
-                        addr=client_address,
-                        num_active_ptt=self.shared['num_active_ptt'],
+                    c_thread = threading.Thread(
+                        target=self.command_handler, args=(command_data, self.sock, client_address)
                     )
-                    c_thread = threading.Thread(target=self.command_handler, args=(command_obj,))
                     c_thread.daemon = True
                     c_thread.start()
                 except OSError:
