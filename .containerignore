@@ -1,0 +1,24 @@
+# Git
+.git
+.github
+
+# Python cache
+__pycache__
+*.pyc
+
+# Virtual environments
+.venv
+venv
+
+# Testing artifacts
+.pytest_cache
+htmlcov
+.coverage
+
+# Tool caches
+.mypy_cache
+.ruff_cache
+
+# Development files
+.containerignore
+compose.yaml
