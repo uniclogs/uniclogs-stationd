@@ -37,7 +37,7 @@ jobs:
     # TODO: Remove --exclude flag when GPIO submodule is replaced with gpiod
     - name: Typecheck with mypy
       run: |
-        mypy src/stationd --exclude="gpio/"
+        mypy src/stationd --exclude="/src/stationd/gpio/" --ignore-imports=skip
     - name: Test with pytest
       run: |
         pytest
