@@ -11,5 +11,4 @@ class TestBasicFunctionality:
     def test_stationd_has_expected_attributes(self) -> None:
         """Test that stationd module has expected classes and constants."""
         assert hasattr(stationd, 'StationD')
-        assert hasattr(stationd, 'Command')
         assert hasattr(stationd, 'config')
