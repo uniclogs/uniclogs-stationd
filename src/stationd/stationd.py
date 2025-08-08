@@ -39,9 +39,9 @@ class MaxPTTError(Exception):
 
 
 class ActivePTT:
-    '''Thread safe counter for tracking simultaionous PTT activations.
+    '''Thread safe counter for tracking simultaneous PTT activations.
 
-    At most PTT_MAX_COUNT PTT lines scan be active at one time and this information needs to be
+    At most PTT_MAX_COUNT PTT lines can be active at one time and this information needs to be
     shared across all accessories and amplifiers.
     '''
 
@@ -135,8 +135,8 @@ class StationD:
                 message = f'FAIL: {" ".join(command)} PTT Conflict\n'
             except amp.PTTCooldownError as e:
                 message = f'WARNING: Please wait {e.seconds} seconds and try again\n'
-            except amp.MollyGuardError:
-                message = 'Re-enter the command within the next 20 seconds to proceed\n'
+            except amp.MollyGuardError as e:
+                message = f'Re-enter the command within the next {e.seconds} seconds to proceed\n'
             except MaxPTTError:
                 message = f'Fail: {" ".join(command)} Max PTT\n'
             except InvalidCommandError:

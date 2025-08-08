@@ -7,6 +7,7 @@ MOLLY_TIME = 20  # In seconds
 PTT_COOLDOWN = 120  # In seconds
 SLEEP_TIMER = 0.1
 
+# Polarization directions
 LEFT = HIGH
 RIGHT = LOW
 
@@ -17,6 +18,10 @@ class MollyGuardError(Exception):
     Used to prevent accidental execution of potentially dangerous commands by
     requiring confirmation within a time window.
     """
+
+    def __init__(self, seconds: float) -> None:
+        """Initialize Molly Guard exception."""
+        self.seconds = seconds
 
 
 class PTTCooldownError(Exception):
@@ -69,7 +74,7 @@ class TxAmplifier:
     def check_molly_guard(self) -> None:
         if time.time() - self.molly_guard_time > MOLLY_TIME:
             self.molly_guard_time = time.time()
-            raise MollyGuardError
+            raise MollyGuardError(MOLLY_TIME)
 
     def rf_ptt_on(self) -> None:
         if self.rf_ptt.read() == sd.ON:
