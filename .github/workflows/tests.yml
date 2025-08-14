@@ -30,6 +30,9 @@ jobs:
     - name: Format with Ruff
       run: |
         ruff format --check
+    - name: Typecheck with mypy
+      run: |
+        mypy src/stationd --follow-imports=skip
     - name: Test with pytest
       run: |
         pytest
