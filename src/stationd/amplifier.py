@@ -1,15 +1,14 @@
 import time
 
 from . import stationd as sd
-from .gpio.gpio import HIGH, LOW, GPIOPin
 
 MOLLY_TIME = 20  # In seconds
 PTT_COOLDOWN = 120  # In seconds
 SLEEP_TIMER = 0.1
 
 # Polarization directions
-LEFT = HIGH
-RIGHT = LOW
+LEFT = sd.ON
+RIGHT = sd.OFF
 
 
 class MollyGuardError(Exception):
@@ -48,10 +47,10 @@ class TxAmplifier:
         self.active_ptt = active_ptt
 
         self.rf_ptt = sd.assert_out(
-            GPIOPin(int(sd.config[section]['rf_ptt_pin']), None, initial=None)
+            sd.GPIOPin(int(sd.config[section]['rf_ptt_pin']), None, initial=None)
         )
         self.pa_power = sd.assert_out(
-            GPIOPin(int(sd.config[section]['pa_power_pin']), None, initial=None)
+            sd.GPIOPin(int(sd.config[section]['pa_power_pin']), None, initial=None)
         )
 
         self.molly_guard_time = time.time() - MOLLY_TIME
@@ -126,11 +125,11 @@ class RxTxAmplifier(TxAmplifier):
         """Initialize a new Amplifier instance."""
         super().__init__(active_ptt, section)
         self.tr_relay = sd.assert_out(
-            GPIOPin(int(sd.config[section]['tr_relay_pin']), None, initial=None)
+            sd.GPIOPin(int(sd.config[section]['tr_relay_pin']), None, initial=None)
         )
-        self.lna = sd.assert_out(GPIOPin(int(sd.config[section]['lna_pin']), None, initial=None))
+        self.lna = sd.assert_out(sd.GPIOPin(int(sd.config[section]['lna_pin']), None, initial=None))
         self.polarization = sd.assert_out(
-            GPIOPin(int(sd.config[section]['polarization_pin']), None, initial=None)
+            sd.GPIOPin(int(sd.config[section]['polarization_pin']), None, initial=None)
         )
 
     def device_status(self, command: list[str]) -> str:

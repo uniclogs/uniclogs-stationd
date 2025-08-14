@@ -1,5 +1,4 @@
 from . import stationd as sd
-from .gpio.gpio import GPIOPin
 
 
 class Accessory:
@@ -17,7 +16,7 @@ class Accessory:
         pin.
         """
         self.power = sd.assert_out(
-            GPIOPin(int(sd.config[config_section]['power_pin']), None, initial=None)
+            sd.GPIOPin(int(sd.config[config_section]['power_pin']), initial=None)
         )
 
     def device_status(self, command: list[str]) -> str:

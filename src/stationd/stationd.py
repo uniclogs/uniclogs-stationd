@@ -6,6 +6,7 @@ and other hardware components.
 """
 
 import configparser
+import gpiod
 import logging
 import socket
 import threading
@@ -13,7 +14,6 @@ from pathlib import Path
 
 from . import accessory as acc
 from . import amplifier as amp
-from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
 
 # Module logger
 logger = logging.getLogger(__name__)
@@ -23,8 +23,10 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 
 # Constants
-ON = HIGH
-OFF = LOW
+ON = 1
+OFF = 0
+OUT = "out"
+IN = "in"
 
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
@@ -163,6 +165,69 @@ class StationD:
                     logger.exception('Socket error: %s')
         except KeyboardInterrupt:
             self.shutdown_server()
+
+
+class GPIOPin:
+    """GPIO pin wrapper using gpiod library.
+
+    Provides a common interface for the gpiod library.
+    """
+
+    def __init__(self, pin: int, initial: Optional[int] = None):
+        """Initialize a GPIO pin."""
+        self.pin = pin
+        self.chip_path = sd.config['GPIO-CHIP']['path']
+        self._chip = gpiod.Chip(self.chip_path)
+        self._initial = initial
+        self._request = None
+        self._direction = None
+
+    def read(self) -> int:
+        """Read the current value of the GPIO pin."""
+        if self._direction != IN:
+            self.set_direction(IN)
+
+        return self._request.get_value(self.pin)
+
+    def write(self, value: int) -> None:
+        """Write new value for the GPIO pin."""
+        if self._direction != OUT:
+            self.set_direction(OUT)
+
+        self._request.set_value(self.pin, value)
+
+    def get_direction(self) -> str:
+        """Get the current direction of the GPIO pin."""
+        return self._direction
+
+    def set_direction(self, direction: str) -> None:
+        """Set the direction of the GPIO pin."""
+        if self._request:
+            self._request.release()
+            self._request = None
+
+        if direction == OUT:
+            config = gpiod.LineSettings(
+                direction=gpiod.Line.Direction.OUTPUT,
+                output_value=gpiod.Line.Value(self._initial)
+            )
+        elif direction == IN:
+            config = gpiod.LineSettings(direction=gpiod.Line.Direction.INPUT)
+        else:
+            raise ValueError(f"Invalid direction: {direction}")
+
+        self._request = self._chip.request_lines(
+            consumer="stationd",
+            config={self.pin: config}
+        )
+        self._direction = direction
+
+    def __del__(self):
+        """Cleanup GPIO resources."""
+        if hasattr(self, '_request') and self._request:
+            self._request.release()
+        if hasattr(self, '_chip') and self._chip:
+            self._chip.close()
 
 
 # Globals ----------------------------------------------------------------------

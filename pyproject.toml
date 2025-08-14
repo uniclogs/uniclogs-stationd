@@ -31,13 +31,8 @@ dev = [
 
 [tool.mypy]
 ignore_missing_imports = true
-# TODO: Remove when gpio submodule is replaced.
-exclude = [
-    "src/stationd/gpio/.*"
-]
 
 [tool.pytest.ini_options]
-norecursedirs = ["gpio"]
 addopts = [
     "--cov=.",
     "--cov-report=term-missing",
@@ -46,16 +41,12 @@ addopts = [
 
 [tool.coverage.run]
 source = ["."]
-omit = [
-    "gpio/*", "tests/*"
-]
 
 [tool.ruff]
 line-length = 100
 
 [tool.ruff.format]
 quote-style = "preserve"
-exclude = ["src/stationd/gpio/**"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -100,6 +91,3 @@ ignore = [
     "S101",      # assert - pytest prefers plain assert
     "PLC0415",   # import - pytests need flexibility around when to import
 ]
-# Don't lint gpio submodule.
-# TODO: Remove when gpio submodule is replaced.
-"**/gpio/**" = ["ALL"]
