@@ -32,7 +32,7 @@ jobs:
         ruff format --check
     - name: Typecheck with mypy
       run: |
-        mypy src/stationd --follow-imports=skip
+        mypy src/stationd --strict
     - name: Test with pytest
       run: |
         pytest

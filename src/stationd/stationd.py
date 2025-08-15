@@ -186,7 +186,7 @@ class GPIOPin:
         if self._request is None:
             raise RuntimeError("GPIO pin request not initialized")
 
-        return self._request.get_value(self.pin).value
+        return int(self._request.get_value(self.pin).value)
 
     def write(self, value: int) -> None:
         """Write new value for the GPIO pin."""
