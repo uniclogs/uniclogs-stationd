@@ -1,5 +1,5 @@
 from . import stationd as sd
-from .gpio.gpio import GPIOPin
+from .constants import OFF, ON
 
 
 class Accessory:
@@ -17,7 +17,7 @@ class Accessory:
         pin.
         """
         self.power = sd.assert_out(
-            GPIOPin(int(sd.config[config_section]['power_pin']), None, initial=None)
+            sd.GPIOPin(int(sd.config[config_section]['power_pin']), initial=None)
         )
 
     def device_status(self, command: list[str]) -> str:
@@ -32,14 +32,14 @@ class Accessory:
         return sd.get_status(component, command)
 
     def power_on(self) -> None:
-        if self.power.read() == sd.ON:
+        if self.power.read() == ON:
             raise sd.NoChangeError
-        self.power.write(sd.ON)
+        self.power.write(ON)
 
     def power_off(self) -> None:
-        if self.power.read() == sd.OFF:
+        if self.power.read() == OFF:
             raise sd.NoChangeError
-        self.power.write(sd.OFF)
+        self.power.write(OFF)
 
 
 class VUTxRelay(Accessory):

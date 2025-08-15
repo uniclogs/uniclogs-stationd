@@ -11,9 +11,11 @@ import socket
 import threading
 from pathlib import Path
 
+import gpiod
+
 from . import accessory as acc
 from . import amplifier as amp
-from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
+from .constants import IN, ON, OUT
 
 # Module logger
 logger = logging.getLogger(__name__)
@@ -21,10 +23,6 @@ logger = logging.getLogger(__name__)
 # Config File
 config = configparser.ConfigParser()
 config.read('config.ini')
-
-# Constants
-ON = HIGH
-OFF = LOW
 
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
@@ -163,6 +161,71 @@ class StationD:
                     logger.exception('Socket error: %s')
         except KeyboardInterrupt:
             self.shutdown_server()
+
+
+class GPIOPin:
+    """GPIO pin wrapper using gpiod library.
+
+    Provides a common interface for the gpiod library.
+    """
+
+    def __init__(self, pin: int, initial: int | None) -> None:
+        """Initialize a GPIO pin."""
+        self.pin = pin
+        self.chip_path = config['GPIO-CHIP']['path']
+        self._chip = gpiod.Chip(self.chip_path)
+        self._initial = initial
+        self._request: gpiod.LineRequest | None = None
+        self._direction: str | None = None
+
+    def read(self) -> int:
+        """Read the current value of the GPIO pin."""
+        if self._direction != IN:
+            self.set_direction(IN)
+
+        if self._request is None:
+            raise RuntimeError("GPIO pin request not initialized")
+
+        return int(self._request.get_value(self.pin).value)
+
+    def write(self, value: int) -> None:
+        """Write new value for the GPIO pin."""
+        if self._direction != OUT:
+            self.set_direction(OUT)
+
+        if self._request is None:
+            raise RuntimeError("GPIO pin request not initialized")
+
+        self._request.set_value(self.pin, gpiod.line.Value(value))
+
+    def get_direction(self) -> str | None:
+        """Get the current direction of the GPIO pin."""
+        return self._direction
+
+    def set_direction(self, direction: str) -> None:
+        """Set the direction of the GPIO pin."""
+        if self._request:
+            self._request.release()
+            self._request = None
+
+        if direction == OUT:
+            config = gpiod.LineSettings(
+                direction=gpiod.line.Direction.OUTPUT, output_value=gpiod.line.Value(self._initial)
+            )
+        elif direction == IN:
+            config = gpiod.LineSettings(direction=gpiod.line.Direction.INPUT)
+        else:
+            raise ValueError(f"Invalid direction: {direction}")
+
+        self._request = self._chip.request_lines(consumer="stationd", config={self.pin: config})
+        self._direction = direction
+
+    def __del__(self) -> None:
+        """Cleanup GPIO resources."""
+        if hasattr(self, '_request') and self._request:
+            self._request.release()
+        if hasattr(self, '_chip') and self._chip:
+            self._chip.close()
 
 
 # Globals ----------------------------------------------------------------------
