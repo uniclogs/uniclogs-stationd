@@ -37,16 +37,16 @@ class MaxPTTError(Exception):
 
 
 class ActivePTT:
-    '''Thread safe counter for tracking simultaneous PTT activations.
+    """Thread safe counter for tracking simultaneous PTT activations.
 
     At most PTT_MAX_COUNT PTT lines can be active at one time and this information needs to be
     shared across all accessories and amplifiers.
-    '''
+    """
 
     PTT_MAX_COUNT = 1
 
     def __init__(self) -> None:
-        '''Create a PTT counter initialized to 0.'''
+        """Create a PTT counter initialized to 0."""
         self.count = 0
         self._lock = threading.Lock()
 
@@ -163,71 +163,6 @@ class StationD:
             self.shutdown_server()
 
 
-class GPIOPin:
-    """GPIO pin wrapper using gpiod library.
-
-    Provides a common interface for the gpiod library.
-    """
-
-    def __init__(self, pin: int, initial: int | None) -> None:
-        """Initialize a GPIO pin."""
-        self.pin = pin
-        self.chip_path = config['GPIO-CHIP']['path']
-        self._chip = gpiod.Chip(self.chip_path)
-        self._initial = initial
-        self._request: gpiod.LineRequest | None = None
-        self._direction: str | None = None
-
-    def read(self) -> int:
-        """Read the current value of the GPIO pin."""
-        if self._direction != IN:
-            self.set_direction(IN)
-
-        if self._request is None:
-            raise RuntimeError("GPIO pin request not initialized")
-
-        return int(self._request.get_value(self.pin).value)
-
-    def write(self, value: int) -> None:
-        """Write new value for the GPIO pin."""
-        if self._direction != OUT:
-            self.set_direction(OUT)
-
-        if self._request is None:
-            raise RuntimeError("GPIO pin request not initialized")
-
-        self._request.set_value(self.pin, gpiod.line.Value(value))
-
-    def get_direction(self) -> str | None:
-        """Get the current direction of the GPIO pin."""
-        return self._direction
-
-    def set_direction(self, direction: str) -> None:
-        """Set the direction of the GPIO pin."""
-        if self._request:
-            self._request.release()
-            self._request = None
-
-        if direction == OUT:
-            config = gpiod.LineSettings(
-                direction=gpiod.line.Direction.OUTPUT, output_value=gpiod.line.Value(self._initial)
-            )
-        elif direction == IN:
-            config = gpiod.LineSettings(direction=gpiod.line.Direction.INPUT)
-        else:
-            raise ValueError(f"Invalid direction: {direction}")
-
-        self._request = self._chip.request_lines(consumer="stationd", config={self.pin: config})
-        self._direction = direction
-
-    def __del__(self) -> None:
-        """Cleanup GPIO resources."""
-        if hasattr(self, '_request') and self._request:
-            self._request.release()
-        if hasattr(self, '_chip') and self._chip:
-            self._chip.close()
-
-
 # Globals ----------------------------------------------------------------------
 
 
@@ -250,31 +185,58 @@ def command_parser(device: 'acc.Accessory | amp.TxAmplifier', command: list[str]
         return device.device_status(command)
     raise InvalidCommandError
 
-
-def get_state(gpiopin: GPIOPin) -> str:
+def get_state(line) -> str:
     """Get the current state of a given GPIO pin."""
-    if gpiopin.read() == ON:
-        return 'ON'
-    return 'OFF'
+    value = line.get_value()
+    return "ON" if value == 1 else "OFF"
 
+# # FIXME
+# def read_temp(path: Path) -> str:
+#     """Read temperature from a persistent file handle and send response."""
+#     with path.open('rb', buffering=0) as o:
+#         temp = float(o.read()) / 1000
+#     return f'temp: {temp!s}\n'
 
-def read_temp(path: Path) -> str:
-    """Read temperature from a persistent file handle and send response."""
-    with path.open('rb', buffering=0) as o:
-        temp = float(o.read()) / 1000
-    return f'temp: {temp!s}\n'
-
-
-def get_status(gpiopin: GPIOPin, command: list[str]) -> str:
+def get_status(line_request: gpiod.LineRequest, pin: int, command: list[str]) -> str:
     """Get a formatted status string for a GPIO pin."""
-    return f'{command[0]} {command[1]} {get_state(gpiopin)}\n'
+    try:
+        value = line_request.get_value(pin)
+        state = "ON" if value == gpiod.line.Value.ACTIVE else "OFF"
+        return f'{command[0]} {command[1]} {state}\n'
+    except Exception:
+        logger.exception("Failed to get status for GPIO pin %s", pin)
+        raise
 
+def power_on(line_request: gpiod.LineRequest, pin: int) -> None:
+    """Turn on power to a GPIO pin."""
+    try:
+        line_request.set_value(pin, gpiod.line.Value.ACTIVE)
+        logger.info("Powered ON GPIO pin %s", pin)
+    except Exception:
+        logger.exception("Failed to power on GPIO pin %s", pin)
+        raise
 
-def assert_out(gpiopin: GPIOPin) -> GPIOPin:
+def power_off(line_request: gpiod.LineRequest, pin: int) -> None:
+    """Turn off power to a GPIO pin."""
+    try:
+        line_request.set_value(pin, gpiod.line.Value.INACTIVE)
+        logger.info("Powered OFF GPIO pin %s", pin)
+    except Exception:
+        logger.exception("Failed to power off GPIO pin %s", pin)
+        raise
+
+def assert_out(pin: int, chip_path: str) -> gpiod.LineRequest:
     """Ensure a GPIO pin is configured as an output pin."""
-    if gpiopin.get_direction() != OUT:
-        gpiopin.set_direction(OUT)
-    return gpiopin
+    try:
+        chip = gpiod.Chip(chip_path)
+
+        return chip.request_lines(
+            consumer="stationd",
+            config={pin: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)}
+        )
+    except Exception:
+        logger.exception("Failed to assert GPIO pin %s on %s", pin, chip_path)
+        raise
 
 
 # Exceptions -------------------------------------------------------------------

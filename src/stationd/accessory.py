@@ -16,30 +16,39 @@ class Accessory:
         Sets up the base attributes for an accessory including the power GPIO
         pin.
         """
-        self.power = sd.assert_out(
-            sd.GPIOPin(int(sd.config[config_section]['power_pin']), initial=None)
-        )
+        self.config_section = config_section
+        self.power_pin = int(sd.config[config_section]["power_pin"])
+        self.power_line = sd.assert_out(self.power_pin, config_section)
 
     def device_status(self, command: list[str]) -> str:
-        return f'{command[0]} power {sd.get_state(self.power)}\n'
+        return f'{command[0]} power {sd.get_state(self.power_line)}\n'
 
     def component_status(self, command: list[str]) -> str:
         try:
-            component = getattr(self, command[1].replace('-', '_'))
+            component_name = command[1].replace('-', '_')
+            # For accessories, the main component is the power line
+            if component_name == 'power':
+                return sd.get_status(self.power_line, self.power_pin, command)
+            else:
+                component = getattr(self, component_name)
+                if hasattr(component, 'power_line') and hasattr(component, 'power_pin'):
+                    return sd.get_status(component.power_line, component.power_pin, command)
+                else:
+                    raise sd.InvalidCommandError
         except AttributeError as error:
             raise sd.InvalidCommandError from error
 
-        return sd.get_status(component, command)
-
     def power_on(self) -> None:
-        if self.power.read() == ON:
+        """Turn on the accessory."""
+        if sd.get_state(self.power_line) == "ON":
             raise sd.NoChangeError
-        self.power.write(ON)
+        sd.power_on(self.power_line, self.power_pin)
 
     def power_off(self) -> None:
-        if self.power.read() == OFF:
+        """Turn off the accessory."""
+        if sd.get_state(self.power_line) == "OFF":
             raise sd.NoChangeError
-        self.power.write(OFF)
+        sd.power_off(self.power_line, self.power_pin)
 
 
 class VUTxRelay(Accessory):
