@@ -2,9 +2,6 @@
 udp_ip = 127.0.0.1
 udp_port = 5005
 
-[GPIO-CHIP]
-path = '/dev/gpiochip4' # Raspberry Pi 5 gpio chip
-
 [VHF]
 tr_relay_pin = 17
 rf_ptt_pin = 18

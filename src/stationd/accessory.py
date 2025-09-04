@@ -10,15 +10,15 @@ class Accessory:
     and support status reporting via network commands (UDP).
     """
 
-    def __init__(self, config_section: str) -> None:
+    def __init__(self, section: str) -> None:
         """Initialize a new Accessory instance.
 
         Sets up the base attributes for an accessory including the power GPIO
         pin.
         """
-        self.config_section = config_section
-        self.power_pin = int(sd.config[config_section]["power_pin"])
-        self.power_line = sd.assert_out(self.power_pin, config_section)
+        self.section = section
+        self.power_pin = int(sd.config[section]["power_pin"])
+        self.power_line = sd.assert_out(self.power_pin, section)
 
     def device_status(self, command: list[str]) -> str:
         return f'{command[0]} power {sd.get_state(self.power_line)}\n'

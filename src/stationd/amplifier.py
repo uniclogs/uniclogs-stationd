@@ -46,7 +46,7 @@ class TxAmplifier:
     def __init__(self, active_ptt: 'sd.ActivePTT', section: str) -> None:
         """Initialize a new Amplifier instance."""
         self.active_ptt = active_ptt
-        
+
         self.rf_ptt_pin = int(sd.config[section]['rf_ptt_pin'])
         self.rf_ptt = sd.assert_out(self.rf_ptt_pin, section)
         self.pa_power_pin = int(sd.config[section]['pa_power_pin'])
@@ -132,7 +132,7 @@ class RxTxAmplifier(TxAmplifier):
     def __init__(self, active_ptt: 'sd.ActivePTT', section: str) -> None:
         """Initialize a new Amplifier instance."""
         super().__init__(active_ptt, section)
-        
+
         self.tr_relay_pin = int(sd.config[section]['tr_relay_pin'])
         self.tr_relay = sd.assert_out(self.tr_relay_pin, section)
         self.lna_pin = int(sd.config[section]['lna_pin'])
@@ -141,7 +141,7 @@ class RxTxAmplifier(TxAmplifier):
         self.polarization = sd.assert_out(self.polarization_pin, section)
 
     def device_status(self, command: list[str]) -> str:
-        p_state = 'LEFT' if sd.get_state(self.polarization) == "ON" else 'RIGHT'
+        p_state = "LEFT" if sd.get_state(self.polarization) == "ON" else "RIGHT"
         return super().device_status(command) + (
             f'{command[0]} tr-relay {sd.get_state(self.tr_relay)}\n'
             f'{command[0]} lna {sd.get_state(self.lna)}\n'
@@ -149,8 +149,8 @@ class RxTxAmplifier(TxAmplifier):
         )
 
     def component_status(self, command: list[str]) -> str:
-        if command[1] == 'polarization':
-            p_state = 'LEFT' if sd.get_state(self.polarization) == "ON" else 'RIGHT'
+        if command[1] == "polarization":
+            p_state = "LEFT" if sd.get_state(self.polarization) == "ON" else "RIGHT"
             return f'{command[0]} {command[1]} {p_state}\n'
         return super().component_status(command)
 
