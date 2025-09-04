@@ -190,12 +190,11 @@ def get_state(line) -> str:
     value = line.get_value()
     return "ON" if value == 1 else "OFF"
 
-# # FIXME
-# def read_temp(path: Path) -> str:
-#     """Read temperature from a persistent file handle and send response."""
-#     with path.open('rb', buffering=0) as o:
-#         temp = float(o.read()) / 1000
-#     return f'temp: {temp!s}\n'
+def read_temp(path: Path) -> str:
+    """Read temperature from a persistent file handle and send response."""
+    with path.open('rb', buffering=0) as o:
+        temp = float(o.read()) / 1000
+    return f'temp: {temp!s}\n'
 
 def get_status(line_request: gpiod.LineRequest, pin: int, command: list[str]) -> str:
     """Get a formatted status string for a GPIO pin."""
