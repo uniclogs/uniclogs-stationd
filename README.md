@@ -4,39 +4,54 @@ A power management Daemon for Uniclogs. Accepts network commands via UDP.
 
 ## Installation
 
-Install sysfs gpio library:
+### For Development (Container)
 
-```sh
-git submodule update --init
-```
+These instructions assume you have Podman installed and configured.
 
-Install the project and its dependencies:
+1.  Build and run the container:
 
-```sh
-pip install -e ".[dev]"
-```
+    ```sh
+    podman compose up -d
+    ```
+
+2.  Drop into the container:
+
+    ```sh
+    podman compose exec stationd bash
+    ```
+
+3.  Install dependencies (inside the container):
+
+    ```sh
+    pip install -e .[dev]
+    ```
+
+### For Raspberry Pi (Hardware)
+
+1.  Install Python dependencies:
+
+    ```sh
+    pip install -e .
+    ```
+
+2.  Modify the config.ini file at the root of the project to suite your needs.
+
+3.  Run the daemon:
+
+    ```sh
+    python -m stationd
+    ```
 
 ## Usage
 
-Set desired IP address and port number at top of stationd.py:
-```
-UDP_IP = '127.0.0.1'
-UDP_PORT = 5005
-```
+### Example UDP command using Netcat
 
-To run the program:
-
-```sh
-python3 -m stationd
-```
-
-Example UDP command using Netcat:
 ```
 echo "vhf polarization status" | nc -u -w 1 127.0.0.1 5005
 ```
 
+### Example StationD Commands
 
-Command Examples:
 ```
 # turn on TX for VHF amplifier
 vhf pa-power on
@@ -60,7 +75,8 @@ uhf status
 gettemp
 ```
 
-Supported Commands:
+### Supported Commands
+
 ```
 <vhf|uhf> <pa-power|rf-ptt|lna> <on|off|status>
 
