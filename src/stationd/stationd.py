@@ -15,7 +15,6 @@ import gpiod
 
 from . import accessory as acc
 from . import amplifier as amp
-from .constants import IN, ON, OUT
 from .gpio_alloc import GPIOAllocator
 
 # Module logger
@@ -189,16 +188,19 @@ def command_parser(device: 'acc.Accessory | amp.TxAmplifier', command: list[str]
         return device.device_status(command)
     raise InvalidCommandError
 
-def get_state(line) -> str:
+
+def get_state(line: gpiod.LineRequest, pin: int) -> str:
     """Get the current state of a given GPIO pin."""
-    value = line.get_value()
-    return "ON" if value == 1 else "OFF"
+    value = line.get_value(pin)
+    return "ON" if value == gpiod.line.Value.ACTIVE else "OFF"
+
 
 def read_temp(path: Path) -> str:
     """Read temperature from a persistent file handle and send response."""
     with path.open('rb', buffering=0) as o:
         temp = float(o.read()) / 1000
     return f'temp: {temp!s}\n'
+
 
 def get_status(line_request: gpiod.LineRequest, pin: int, command: list[str]) -> str:
     """Get a formatted status string for a GPIO pin."""
@@ -210,6 +212,7 @@ def get_status(line_request: gpiod.LineRequest, pin: int, command: list[str]) ->
         logger.exception("Failed to get status for GPIO pin %s", pin)
         raise
 
+
 def power_on(line_request: gpiod.LineRequest, pin: int) -> None:
     """Turn on power to a GPIO pin."""
     try:
@@ -219,6 +222,7 @@ def power_on(line_request: gpiod.LineRequest, pin: int) -> None:
         logger.exception("Failed to power on GPIO pin %s", pin)
         raise
 
+
 def power_off(line_request: gpiod.LineRequest, pin: int) -> None:
     """Turn off power to a GPIO pin."""
     try:
@@ -227,6 +231,7 @@ def power_off(line_request: gpiod.LineRequest, pin: int) -> None:
     except Exception:
         logger.exception("Failed to power off GPIO pin %s", pin)
         raise
+
 
 def assert_out(device_name: str, pin_name: str) -> gpiod.LineRequest:
     """Ensure a GPIO pin is configured as an output pin."""

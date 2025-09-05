@@ -3,9 +3,8 @@
 This module handles GPIO chip, pin, and line allocation tracking.
 """
 
-import logging
 import configparser
-from typing import Dict, List, Tuple, Optional
+import logging
 
 import gpiod
 
@@ -22,9 +21,9 @@ class GPIOAllocator:
     def __init__(self, config: configparser.ConfigParser) -> None:
         """Initialize GPIO allocator with configuration."""
         self.config = config
-        self.chips: Dict[str, gpiod.Chip] = {}
-        self.available_pins: Dict[str, Tuple[str, int, gpiod.LineRequest]] = {}
-        self.allocated_pins: Dict[str, List[Tuple[str, gpiod.LineRequest]]] = {}
+        self.chips: dict[str, gpiod.Chip] = {}
+        self.available_pins: dict[str, tuple[str, int, gpiod.LineRequest]] = {}
+        self.allocated_pins: dict[str, list[tuple[str, gpiod.LineRequest]]] = {}
         self._parse_config()
 
     def _parse_config(self) -> None:
@@ -39,9 +38,7 @@ class GPIOAllocator:
                     pin_num = int(pin_val)
                     line_request = chip.request_lines(
                         consumer="stationd",
-                        config={
-                            pin_num: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)
-                        }
+                        config={pin_num: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)},
                     )
 
                     self.available_pins[pin_label] = (chip_path, pin_num, line_request)
@@ -57,13 +54,15 @@ class GPIOAllocator:
             for allocated_pin_label, _ in allocated_pins:
                 if allocated_pin_label == pin_label:
                     if allocated_device == device_name:
-                        # Pin already allocated to this device, return existing line request
-                        logger.warning(f"Pin '{pin_label}' already allocated to device '{device_name}'")
-                        return next(line_req for p_label, line_req in allocated_pins if p_label == pin_label)
-                    else:
-                        raise RuntimeError(
-                            f"Pin '{pin_label}' is already allocated to device '{allocated_device}'"
+                        logger.warning(
+                            "Pin '%s' already in use by device '%s'", pin_label, device_name
                         )
+                        return next(
+                            line_req for p_label, line_req in allocated_pins if p_label == pin_label
+                        )
+                    raise RuntimeError(
+                        f"Pin '{pin_label}' is already allocated to device '{allocated_device}'"
+                    )
 
         # FIXME: Remove pin from "available pins"?
         chip_path, pin_number, line_request = self.available_pins[pin_label]
@@ -73,11 +72,17 @@ class GPIOAllocator:
             self.allocated_pins[device_name] = []
         self.allocated_pins[device_name].append((pin_label, line_request))
 
-        logger.info(f"Allocated pin '{pin_label}' ({chip_path}:{pin_number}) to device '{device_name}'")
+        logger.info(
+            "Allocated pin '%s' (%s:%s) to device '%s'",
+            pin_label,
+            chip_path,
+            pin_number,
+            device_name,
+        )
 
         return line_request
 
-    def get_pin_info(self, pin_label: str) -> Optional[Tuple[str, int]]:
+    def get_pin_info(self, pin_label: str) -> tuple[str, int] | None:
         """Get chip path and pin number for a given pin name."""
         if pin_label in self.available_pins:
             chip_path, pin_number, _ = self.available_pins[pin_label]

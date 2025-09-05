@@ -1,5 +1,4 @@
 from . import stationd as sd
-from .constants import OFF, ON
 
 
 class Accessory:
@@ -26,31 +25,31 @@ class Accessory:
             raise RuntimeError(f"Power pin not found for device {device_name}")
 
     def device_status(self, command: list[str]) -> str:
-        return f'{command[0]} power {sd.get_state(self.power_line)}\n'
+        return f'{command[0]} power {sd.get_state(self.power_line, self.power_pin)}\n'
 
     def component_status(self, command: list[str]) -> str:
         try:
             component_name = command[1].replace('-', '_')
             if component_name == 'power':
                 return sd.get_status(self.power_line, self.power_pin, command)
-            else:
-                component = getattr(self, component_name)
-                if hasattr(component, 'power_line') and hasattr(component, 'power_pin'):
-                    return sd.get_status(component.power_line, component.power_pin, command)
-                else:
-                    raise sd.InvalidCommandError
+
+            component = getattr(self, component_name)
+            if hasattr(component, 'power_line') and hasattr(component, 'power_pin'):
+                return sd.get_status(component.power_line, component.power_pin, command)
+
+            return f"Component {component_name} has no status information"  # noqa: TRY300
         except AttributeError as error:
             raise sd.InvalidCommandError from error
 
     def power_on(self) -> None:
         """Turn on the accessory."""
-        if sd.get_state(self.power_line) == "ON":
+        if sd.get_state(self.power_line, self.power_pin) == "ON":
             raise sd.NoChangeError
         sd.power_on(self.power_line, self.power_pin)
 
     def power_off(self) -> None:
         """Turn off the accessory."""
-        if sd.get_state(self.power_line) == "OFF":
+        if sd.get_state(self.power_line, self.power_pin) == "OFF":
             raise sd.NoChangeError
         sd.power_off(self.power_line, self.power_pin)
 
