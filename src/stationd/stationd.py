@@ -16,6 +16,7 @@ import gpiod
 from . import accessory as acc
 from . import amplifier as amp
 from .constants import IN, ON, OUT
+from .gpio_alloc import GPIOAllocator
 
 # Module logger
 logger = logging.getLogger(__name__)
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 # Config File
 config = configparser.ConfigParser()
 config.read('config.ini')
+
+# GPIO Chip/Pin Allocator
+gpio_alloc = GPIOAllocator(config)
 
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
@@ -86,10 +90,10 @@ class StationD:
         self.l_band = amp.LBand(self.active_ptt)
         # Accessories
         self.vu_tx_relay = acc.VUTxRelay(self.active_ptt)
-        self.satnogs_host = acc.SatnogsHost()
-        self.radio_host = acc.RadioHost()
-        self.rotator = acc.Rotator()
-        self.sdr_b200 = acc.SDRB200()
+        self.satnogs_host = acc.Accessory("SATNOGS-HOST")
+        self.radio_host = acc.Accessory("RADIO-HOST")
+        self.rotator = acc.Accessory("ROTATOR")
+        self.sdr_b200 = acc.Accessory("SDRB200")
         # Temperature sensor
         self.pi_cpu = TEMP_PATH
         # Logger
@@ -224,18 +228,9 @@ def power_off(line_request: gpiod.LineRequest, pin: int) -> None:
         logger.exception("Failed to power off GPIO pin %s", pin)
         raise
 
-def assert_out(pin: int, chip_path: str) -> gpiod.LineRequest:
+def assert_out(device_name: str, pin_name: str) -> gpiod.LineRequest:
     """Ensure a GPIO pin is configured as an output pin."""
-    try:
-        chip = gpiod.Chip(chip_path)
-
-        return chip.request_lines(
-            consumer="stationd",
-            config={pin: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)}
-        )
-    except Exception:
-        logger.exception("Failed to assert GPIO pin %s on %s", pin, chip_path)
-        raise
+    return gpio_alloc.allocate_pin(device_name, pin_name)
 
 
 # Exceptions -------------------------------------------------------------------

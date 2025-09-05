@@ -10,15 +10,20 @@ class Accessory:
     and support status reporting via network commands (UDP).
     """
 
-    def __init__(self, section: str) -> None:
+    def __init__(self, device_name: str) -> None:
         """Initialize a new Accessory instance.
 
         Sets up the base attributes for an accessory including the power GPIO
         pin.
         """
-        self.section = section
-        self.power_pin = int(sd.config[section]["power_pin"])
-        self.power_line = sd.assert_out(self.power_pin, section)
+        self.device_name = device_name
+        self.power_line = sd.assert_out(self.device_name, "power_pin")
+
+        pin_info = sd.gpio_alloc.get_pin_info("power_pin")
+        if pin_info:
+            self.power_pin = pin_info[1]
+        else:
+            raise RuntimeError(f"Power pin not found for device {device_name}")
 
     def device_status(self, command: list[str]) -> str:
         return f'{command[0]} power {sd.get_state(self.power_line)}\n'
@@ -26,7 +31,6 @@ class Accessory:
     def component_status(self, command: list[str]) -> str:
         try:
             component_name = command[1].replace('-', '_')
-            # For accessories, the main component is the power line
             if component_name == 'power':
                 return sd.get_status(self.power_line, self.power_pin, command)
             else:
@@ -78,66 +82,3 @@ class VUTxRelay(Accessory):
     def power_off(self) -> None:
         self._ptt_check()
         super().power_off()
-
-
-class SatnogsHost(Accessory):
-    """SatNOGS host power control.
-
-    Controls power to the SatNOGS host which handles satellite tracking
-    and observation scheduling.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the SatNOGS Host accessory.
-
-        Sets up the SatNOGS host power control with its configured GPIO power
-        pin.
-        """
-        super().__init__('SATNOGS-HOST')
-
-
-class RadioHost(Accessory):
-    """Radio host power control.
-
-    Controls power to the radio host which manages radio communication and
-    digital signal processing.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the Radio Host accessory.
-
-        Sets up the radio host power control with its configured GPIO power pin.
-        """
-        super().__init__('RADIO-HOST')
-
-
-class Rotator(Accessory):
-    """Antenna rotator power control.
-
-    Controls power to the antenna rotator system which provides azimuth and
-    elevation positioning for directional antennas during satellite passes.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the Rotator accessory.
-
-        Sets up the antenna rotator power control with its configured GPIO power
-        pin.
-        """
-        super().__init__('ROTATOR')
-
-
-class SDRB200(Accessory):
-    """USRP B200 SDR power control.
-
-    Controls power to the USRP B200 Software Defined Radio which provides
-    RF reception and transmission capabilities for the ground station.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the SDR B200 accessory.
-
-        Sets up the USRP B200 SDR power control with its configured
-        GPIO power pin.
-        """
-        super().__init__('SDR-B200')
