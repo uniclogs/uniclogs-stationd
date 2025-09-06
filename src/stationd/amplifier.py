@@ -1,15 +1,14 @@
 import time
 
 from . import stationd as sd
-from .gpio.gpio import HIGH, LOW, GPIOPin
 
 MOLLY_TIME = 20  # In seconds
 PTT_COOLDOWN = 120  # In seconds
 SLEEP_TIMER = 0.1
 
 # Polarization directions
-LEFT = HIGH
-RIGHT = LOW
+LEFT = 1
+RIGHT = 0
 
 
 class MollyGuardError(Exception):
@@ -46,30 +45,38 @@ class TxAmplifier:
     def __init__(self, active_ptt: 'sd.ActivePTT', section: str) -> None:
         """Initialize a new Amplifier instance."""
         self.active_ptt = active_ptt
+        self.section = section
 
-        self.rf_ptt = sd.assert_out(
-            GPIOPin(int(sd.config[section]['rf_ptt_pin']), None, initial=None)
-        )
-        self.pa_power = sd.assert_out(
-            GPIOPin(int(sd.config[section]['pa_power_pin']), None, initial=None)
-        )
+        self.rf_ptt = sd.assert_out(f"{section}_rf_ptt", "rf_ptt_pin")
+        self.pa_power = sd.assert_out(f"{section}_pa_power", "pa_power_pin")
 
         self.molly_guard_time = time.time() - MOLLY_TIME
         self.ptt_off_time = time.time() - PTT_COOLDOWN
 
     def device_status(self, command: list[str]) -> str:
-        return (
-            f'{command[0]} rf-ptt {sd.get_state(self.rf_ptt)}\n'
-            f'{command[0]} pa-power {sd.get_state(self.pa_power)}\n'
-        )
+        rf_ptt_state = sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin"))
+        pa_power_state = sd.get_state(self.pa_power, self._get_pin_number("pa_power_pin"))
+        return f'{command[0]} rf-ptt {rf_ptt_state}\n{command[0]} pa-power {pa_power_state}\n'
 
     def component_status(self, command: list[str]) -> str:
         try:
-            component = getattr(self, command[1].replace('-', '_'))
+            component_name = command[1].replace('-', '_')
+
+            if component_name in ['rf_ptt', 'pa_power']:
+                component = getattr(self, component_name)
+                pin_info = sd.gpio_alloc.get_pin_info(f"{component_name}_pin")
+                if pin_info:
+                    return sd.get_status(component, pin_info[1], command)
+
+            if hasattr(self, component_name):
+                component = getattr(self, component_name)
+                pin_info = sd.gpio_alloc.get_pin_info(f"{component_name}_pin")
+                if pin_info:
+                    return sd.get_status(component, pin_info[1], command)
+
+            raise sd.InvalidCommandError
         except AttributeError as error:
             raise sd.InvalidCommandError from error
-
-        return sd.get_status(component, command)
 
     def check_molly_guard(self) -> None:
         if time.time() - self.molly_guard_time > MOLLY_TIME:
@@ -77,40 +84,52 @@ class TxAmplifier:
             raise MollyGuardError(MOLLY_TIME)
 
     def rf_ptt_on(self) -> None:
-        if self.rf_ptt.read() == sd.ON:
+        if sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin")) == "ON":
             raise sd.NoChangeError
-        if self.pa_power.read() == sd.OFF:
+        if sd.get_state(self.pa_power, self._get_pin_number("pa_power_pin")) == "OFF":
             raise sd.PTTConflictError
 
         # brief cooldown
         time.sleep(SLEEP_TIMER)
         self.active_ptt.inc()
-        self.rf_ptt.write(sd.ON)
+
+        sd.power_on(self.rf_ptt, self._get_pin_number("rf_ptt_pin"))
 
     def rf_ptt_off(self) -> None:
-        if self.rf_ptt.read() == sd.OFF:
+        if sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin")) == "OFF":
             raise sd.NoChangeError
-        self.rf_ptt.write(sd.OFF)
+
+        sd.power_off(self.rf_ptt, self._get_pin_number("rf_ptt_pin"))
+
         #  set time ptt turned off
         self.ptt_off_time = time.time()
         self.active_ptt.dec()
 
     def pa_power_on(self) -> None:
-        if self.pa_power.read() == sd.ON:
+        if sd.get_state(self.pa_power, self._get_pin_number("pa_power_pin")) == "ON":
             raise sd.NoChangeError
         self.check_molly_guard()
-        self.pa_power.write(sd.ON)
+
+        sd.power_on(self.pa_power, self._get_pin_number("pa_power_pin"))
 
     def pa_power_off(self) -> None:
-        if self.pa_power.read() == sd.OFF:
+        if sd.get_state(self.pa_power, self._get_pin_number("pa_power_pin")) == "OFF":
             raise sd.NoChangeError
-        if self.rf_ptt.read() == sd.ON:
+        if sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin")) == "ON":
             raise sd.PTTConflictError
         #  Check PTT off for at least 2 minutes
         diff_sec = time.time() - self.ptt_off_time
         if diff_sec <= PTT_COOLDOWN:
             raise PTTCooldownError(round(PTT_COOLDOWN - diff_sec))
-        self.pa_power.write(sd.OFF)
+
+        sd.power_off(self.pa_power, self._get_pin_number("pa_power_pin"))
+
+    def _get_pin_number(self, pin_name: str) -> int:
+        """Get the pin number for a given pin name from GPIO allocator."""
+        pin_info = sd.gpio_alloc.get_pin_info(pin_name)
+        if pin_info:
+            return pin_info[1]
+        raise RuntimeError(f"Pin {pin_name} not found")
 
 
 class RxTxAmplifier(TxAmplifier):
@@ -125,26 +144,33 @@ class RxTxAmplifier(TxAmplifier):
     def __init__(self, active_ptt: 'sd.ActivePTT', section: str) -> None:
         """Initialize a new Amplifier instance."""
         super().__init__(active_ptt, section)
-        self.tr_relay = sd.assert_out(
-            GPIOPin(int(sd.config[section]['tr_relay_pin']), None, initial=None)
-        )
-        self.lna = sd.assert_out(GPIOPin(int(sd.config[section]['lna_pin']), None, initial=None))
-        self.polarization = sd.assert_out(
-            GPIOPin(int(sd.config[section]['polarization_pin']), None, initial=None)
-        )
+
+        self.tr_relay = sd.assert_out(f"{section}_tr_relay", "tr_relay_pin")
+        self.lna = sd.assert_out(f"{section}_lna", "lna_pin")
+        self.polarization = sd.assert_out(f"{section}_polarization", "polarization_pin")
 
     def device_status(self, command: list[str]) -> str:
-        p_state = 'LEFT' if self.polarization.read() == LEFT else 'RIGHT'
+        polarization_state = sd.get_state(
+            self.polarization, self._get_pin_number("polarization_pin")
+        )
+        p_state = "LEFT" if polarization_state == "ON" else "RIGHT"
+        tr_relay_state = sd.get_state(self.tr_relay, self._get_pin_number("tr_relay_pin"))
+        lna_state = sd.get_state(self.lna, self._get_pin_number("lna_pin"))
+
         return super().device_status(command) + (
-            f'{command[0]} tr-relay {sd.get_state(self.tr_relay)}\n'
-            f'{command[0]} lna {sd.get_state(self.lna)}\n'
+            f'{command[0]} tr-relay {tr_relay_state}\n'
+            f'{command[0]} lna {lna_state}\n'
             f'{command[0]} polarization {p_state}\n'
         )
 
     def component_status(self, command: list[str]) -> str:
-        if command[1] == 'polarization':
-            p_state = 'LEFT' if self.polarization.read() == LEFT else 'RIGHT'
+        if command[1] == "polarization":
+            polarization_state = sd.get_state(
+                self.polarization, self._get_pin_number("polarization_pin")
+            )
+            p_state = "LEFT" if polarization_state == "ON" else "RIGHT"
             return f'{command[0]} {command[1]} {p_state}\n'
+
         return super().component_status(command)
 
     def rf_ptt_on(self) -> None:
@@ -152,8 +178,8 @@ class RxTxAmplifier(TxAmplifier):
         # Enforce tr-relay and ptt are same state
         self.tr_relay_on()
         # Ptt command received, turn off LNA
-        if self.lna.read() != sd.OFF:
-            self.lna.write(sd.OFF)
+        if sd.get_state(self.lna, self._get_pin_number("lna_pin")) != "OFF":
+            sd.power_off(self.lna, self._get_pin_number("lna_pin"))
 
     def rf_ptt_off(self) -> None:
         super().rf_ptt_off()
@@ -169,45 +195,45 @@ class RxTxAmplifier(TxAmplifier):
         self.tr_relay_off()
 
     def tr_relay_on(self) -> None:
-        if self.tr_relay.read() == sd.ON:
+        if sd.get_state(self.tr_relay, self._get_pin_number("tr_relay_pin")) == "ON":
             return
-        self.tr_relay.write(sd.ON)
+        sd.power_on(self.tr_relay, self._get_pin_number("tr_relay_pin"))
 
     def tr_relay_off(self) -> None:
-        if self.tr_relay.read() == sd.OFF:
+        if sd.get_state(self.tr_relay, self._get_pin_number("tr_relay_pin")) == "OFF":
             return
-        self.tr_relay.write(sd.OFF)
+        sd.power_off(self.tr_relay, self._get_pin_number("tr_relay_pin"))
 
     def lna_on(self) -> None:
-        if self.lna.read() == sd.ON:
+        if sd.get_state(self.lna, self._get_pin_number("lna_pin")) == "ON":
             raise sd.NoChangeError
         #  Fail if PTT is on
-        if self.rf_ptt.read() == sd.ON:
+        if sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin")) == "ON":
             raise sd.PTTConflictError
-        self.lna.write(sd.ON)
+        sd.power_on(self.lna, self._get_pin_number("lna_pin"))
 
     def lna_off(self) -> None:
-        if self.lna.read() == sd.OFF:
+        if sd.get_state(self.lna, self._get_pin_number("lna_pin")) == "OFF":
             raise sd.NoChangeError
-        self.lna.write(sd.OFF)
+        sd.power_off(self.lna, self._get_pin_number("lna_pin"))
 
     def polarization_left(self) -> None:
-        if self.polarization.read() == LEFT:
+        if sd.get_state(self.polarization, self._get_pin_number("polarization_pin")) == "ON":
             raise sd.NoChangeError
-        if self.rf_ptt.read() == sd.ON:
+        if sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin")) == "ON":
             raise sd.PTTConflictError
         # brief cooldown
         time.sleep(SLEEP_TIMER)
-        self.polarization.write(LEFT)
+        sd.power_on(self.polarization, self._get_pin_number("polarization_pin"))
 
     def polarization_right(self) -> None:
-        if self.polarization.read() == RIGHT:
+        if sd.get_state(self.polarization, self._get_pin_number("polarization_pin")) == "OFF":
             raise sd.NoChangeError
-        if self.rf_ptt.read() == sd.ON:
+        if sd.get_state(self.rf_ptt, self._get_pin_number("rf_ptt_pin")) == "ON":
             raise sd.PTTConflictError
         # brief cooldown
         time.sleep(SLEEP_TIMER)
-        self.polarization.write(RIGHT)
+        sd.power_off(self.polarization, self._get_pin_number("polarization_pin"))
 
 
 class VHF(RxTxAmplifier):
