@@ -1,15 +1,14 @@
 import time
 
 from . import stationd as sd
-from .constants import OFF, ON
 
 MOLLY_TIME = 20  # In seconds
 PTT_COOLDOWN = 120  # In seconds
 SLEEP_TIMER = 0.1
 
 # Polarization directions
-LEFT = ON
-RIGHT = OFF
+LEFT = 1
+RIGHT = 0
 
 
 class MollyGuardError(Exception):
