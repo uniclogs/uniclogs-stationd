@@ -98,8 +98,8 @@ class StationD:
         # Shared ptt count
         self.active_ptt = ActivePTT()
         # Amplifiers
-        # self.vhf = amp.VHF(self.active_ptt)
-        # self.uhf = amp.UHF(self.active_ptt)
+        self.vhf = amp.VHF(self.active_ptt)
+        self.uhf = amp.UHF(self.active_ptt)
         self.l_band = amp.LBand(self.active_ptt)
         # Accessories
         self.vu_tx_relay = acc.VUTxRelay(self.active_ptt)
