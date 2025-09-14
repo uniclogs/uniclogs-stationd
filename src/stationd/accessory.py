@@ -1,3 +1,5 @@
+import gpiod
+
 from . import stationd as sd
 
 
@@ -9,49 +11,38 @@ class Accessory:
     and support status reporting via network commands (UDP).
     """
 
-    def __init__(self, device_name: str) -> None:
+    def __init__(self, config_section: str) -> None:
         """Initialize a new Accessory instance.
 
-        Sets up the base attributes for an accessory including the power GPIO
-        pin.
+        Sets up the base attributes for an accessory.
         """
-        self.device_name = device_name
-        self.power_line = sd.assert_out(self.device_name, "power_pin")
-
-        pin_info = sd.gpio_alloc.get_pin_info("power_pin")
-        if pin_info:
-            self.power_pin = pin_info[1]
-        else:
-            raise RuntimeError(f"Power pin not found for device {device_name}")
+        gpio_chip, gpio_pin = sd.config[config_section]['power_pin'].split(' ')
+        self._power = sd.LineOut("/dev/gpiochip%s" % gpio_chip, gpio_pin)
+        self._power.value = gpiod.line.Value.ACTIVE
 
     def device_status(self, command: list[str]) -> str:
-        return f'{command[0]} power {sd.get_state(self.power_line, self.power_pin)}\n'
+        """Get the power status of an accessory device."""
+        return self.component_status([command[0], 'power', *command[1:]])
 
     def component_status(self, command: list[str]) -> str:
-        try:
-            component_name = command[1].replace('-', '_')
-            if component_name == 'power':
-                return sd.get_status(self.power_line, self.power_pin, command)
+        """Get the power status of an accessory device component."""
+        if command[1] != 'power':
+            raise sd.InvalidCommandError
 
-            component = getattr(self, component_name)
-            if hasattr(component, 'power_line') and hasattr(component, 'power_pin'):
-                return sd.get_status(component.power_line, component.power_pin, command)
-
-            return f"Component {component_name} has no status information"  # noqa: TRY300
-        except AttributeError as error:
-            raise sd.InvalidCommandError from error
+        state = 'ON' if self._power.value == gpiod.line.Value.ACTIVE else 'OFF'
+        return f'{command[0]} {command[1]} {state}\n'
 
     def power_on(self) -> None:
         """Turn on the accessory."""
-        if sd.get_state(self.power_line, self.power_pin) == "ON":
+        if self._power.value == gpiod.line.Value.ACTIVE:
             raise sd.NoChangeError
-        sd.power_on(self.power_line, self.power_pin)
+        self._power.value = gpiod.line.Value.ACTIVE
 
     def power_off(self) -> None:
         """Turn off the accessory."""
-        if sd.get_state(self.power_line, self.power_pin) == "OFF":
+        if self._power.value == gpiod.line.Value.INACTIVE:
             raise sd.NoChangeError
-        sd.power_off(self.power_line, self.power_pin)
+        self._power.value = gpiod.line.Value.INACTIVE
 
 
 class VUTxRelay(Accessory):

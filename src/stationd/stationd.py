@@ -6,16 +6,14 @@ and other hardware components.
 """
 
 import configparser
+import gpiod
 import logging
 import socket
 import threading
 from pathlib import Path
 
-import gpiod
-
 from . import accessory as acc
 from . import amplifier as amp
-from .gpio_alloc import GPIOAllocator
 
 # Module logger
 logger = logging.getLogger(__name__)
@@ -23,9 +21,6 @@ logger = logging.getLogger(__name__)
 # Config File
 config = configparser.ConfigParser()
 config.read('config.ini')
-
-# GPIO Chip/Pin Allocator
-gpio_alloc = GPIOAllocator(config)
 
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
@@ -64,6 +59,25 @@ class ActivePTT:
             self.count = max(self.count - 1, 0)
 
 
+class LineOut:
+    def __init__(self, chip: str, offset: int) -> None:
+        self._line = gpiod.request_lines(
+            chip,
+            consumer="stationd",
+            config={
+                offset: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)
+            },
+        )
+
+    @property
+    def value(self) -> gpiod.line.Value:
+        return self._line.get_value(self._line.offsets[0])
+
+    @value.setter
+    def value(self, value: gpiod.line.Value) -> None:
+        self._line.set_value(self._line.offsets[0], value)
+
+
 class StationD:
     """The main station daemon server.
 
@@ -84,15 +98,15 @@ class StationD:
         # Shared ptt count
         self.active_ptt = ActivePTT()
         # Amplifiers
-        self.vhf = amp.VHF(self.active_ptt)
-        self.uhf = amp.UHF(self.active_ptt)
-        self.l_band = amp.LBand(self.active_ptt)
+        # self.vhf = amp.VHF(self.active_ptt)
+        # self.uhf = amp.UHF(self.active_ptt)
+        # self.l_band = amp.LBand(self.active_ptt)
         # Accessories
         self.vu_tx_relay = acc.VUTxRelay(self.active_ptt)
         self.satnogs_host = acc.Accessory("SATNOGS-HOST")
         self.radio_host = acc.Accessory("RADIO-HOST")
         self.rotator = acc.Accessory("ROTATOR")
-        self.sdr_b200 = acc.Accessory("SDRB200")
+        self.sdr_b200 = acc.Accessory("SDR-B200")
         # Temperature sensor
         self.pi_cpu = TEMP_PATH
         # Logger
@@ -188,54 +202,11 @@ def command_parser(device: 'acc.Accessory | amp.TxAmplifier', command: list[str]
         return device.device_status(command)
     raise InvalidCommandError
 
-
-def get_state(line: gpiod.LineRequest, pin: int) -> str:
-    """Get the current state of a given GPIO pin."""
-    value = line.get_value(pin)
-    return "ON" if value == gpiod.line.Value.ACTIVE else "OFF"
-
-
 def read_temp(path: Path) -> str:
     """Read temperature from a persistent file handle and send response."""
     with path.open('rb', buffering=0) as o:
         temp = float(o.read()) / 1000
     return f'temp: {temp!s}\n'
-
-
-def get_status(line_request: gpiod.LineRequest, pin: int, command: list[str]) -> str:
-    """Get a formatted status string for a GPIO pin."""
-    try:
-        value = line_request.get_value(pin)
-        state = "ON" if value == gpiod.line.Value.ACTIVE else "OFF"
-        return f'{command[0]} {command[1]} {state}\n'
-    except Exception:
-        logger.exception("Failed to get status for GPIO pin %s", pin)
-        raise
-
-
-def power_on(line_request: gpiod.LineRequest, pin: int) -> None:
-    """Turn on power to a GPIO pin."""
-    try:
-        line_request.set_value(pin, gpiod.line.Value.ACTIVE)
-        logger.info("Powered ON GPIO pin %s", pin)
-    except Exception:
-        logger.exception("Failed to power on GPIO pin %s", pin)
-        raise
-
-
-def power_off(line_request: gpiod.LineRequest, pin: int) -> None:
-    """Turn off power to a GPIO pin."""
-    try:
-        line_request.set_value(pin, gpiod.line.Value.INACTIVE)
-        logger.info("Powered OFF GPIO pin %s", pin)
-    except Exception:
-        logger.exception("Failed to power off GPIO pin %s", pin)
-        raise
-
-
-def assert_out(device_name: str, pin_name: str) -> gpiod.LineRequest:
-    """Ensure a GPIO pin is configured as an output pin."""
-    return gpio_alloc.allocate_pin(device_name, pin_name)
 
 
 # Exceptions -------------------------------------------------------------------
