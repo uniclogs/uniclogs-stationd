@@ -1,5 +1,6 @@
-import gpiod
 import time
+
+import gpiod
 
 from . import stationd as sd
 
@@ -71,11 +72,10 @@ class TxAmplifier:
         if component_name == 'rf_ptt':
             state = 'ON' if self.rf_ptt.value == gpiod.line.Value.ACTIVE else 'OFF'
             return f'{command[0]} {command[1]} {state}\n'
-        elif component_name == 'pa_power':
+        if component_name == 'pa_power':
             state = 'ON' if self.pa_power.value == gpiod.line.Value.ACTIVE else 'OFF'
             return f'{command[0]} {command[1]} {state}\n'
-        else:
-            raise sd.InvalidCommandError
+        raise sd.InvalidCommandError
 
     def check_molly_guard(self) -> None:
         if time.time() - self.molly_guard_time > MOLLY_TIME:
@@ -164,7 +164,9 @@ class RxTxAmplifier(TxAmplifier):
 
     def component_status(self, command: list[str]) -> str:
         if command[1] == "polarization":
-            polarization_state = 'ON' if self.polarization.value == gpiod.line.Value.ACTIVE else 'OFF'
+            polarization_state = (
+                'ON' if self.polarization.value == gpiod.line.Value.ACTIVE else 'OFF'
+            )
             p_state = "LEFT" if polarization_state == "ON" else "RIGHT"
             return f'{command[0]} {command[1]} {p_state}\n'
 
@@ -173,7 +175,7 @@ class RxTxAmplifier(TxAmplifier):
         if component_name == 'tr_relay':
             state = 'ON' if self.tr_relay.value == gpiod.line.Value.ACTIVE else 'OFF'
             return f'{command[0]} {command[1]} {state}\n'
-        elif component_name == 'lna':
+        if component_name == 'lna':
             state = 'ON' if self.lna.value == gpiod.line.Value.ACTIVE else 'OFF'
             return f'{command[0]} {command[1]} {state}\n'
 

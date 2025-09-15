@@ -6,11 +6,12 @@ and other hardware components.
 """
 
 import configparser
-import gpiod
 import logging
 import socket
 import threading
 from pathlib import Path
+
+import gpiod
 
 from . import accessory as acc
 from . import amplifier as amp
@@ -60,13 +61,18 @@ class ActivePTT:
 
 
 class LineOut:
+    """GPIO output line controller using gpiod.
+
+    A simple interface for controlling GPIO output lines using the libgpiod library. It wraps
+    the gpiod functionality to provide easy setting and getting of GPIO line values.
+    """
+
     def __init__(self, chip: str, offset: int) -> None:
+        """Initialize a GPIO output line."""
         self._line = gpiod.request_lines(
             chip,
             consumer="stationd",
-            config={
-                offset: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)
-            },
+            config={offset: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)},
         )
 
     @property
@@ -201,6 +207,7 @@ def command_parser(device: 'acc.Accessory | amp.TxAmplifier', command: list[str]
     if len(command) == 2:
         return device.device_status(command)
     raise InvalidCommandError
+
 
 def read_temp(path: Path) -> str:
     """Read temperature from a persistent file handle and send response."""

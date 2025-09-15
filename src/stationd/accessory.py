@@ -17,7 +17,7 @@ class Accessory:
         Sets up the base attributes for an accessory.
         """
         gpio_chip, gpio_pin = sd.config[config_section]['power_pin'].split(' ')
-        self._power = sd.LineOut("/dev/gpiochip%s" % gpio_chip, gpio_pin)
+        self._power = sd.LineOut(f"/dev/gpiochip{gpio_chip}", int(gpio_pin))
         self._power.value = gpiod.line.Value.ACTIVE
 
     def device_status(self, command: list[str]) -> str:
