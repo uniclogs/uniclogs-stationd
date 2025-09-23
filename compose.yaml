@@ -1,0 +1,12 @@
+services:
+  stationd:
+    build:
+      context: .
+      dockerfile: container/Containerfile
+    container_name: stationd
+    image: stationd:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/workspace
+    working_dir: /workspace

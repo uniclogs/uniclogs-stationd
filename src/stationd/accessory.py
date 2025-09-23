@@ -1,5 +1,6 @@
+import gpiod
+
 from . import stationd as sd
-from .gpio.gpio import GPIOPin
 
 
 class Accessory:
@@ -13,33 +14,35 @@ class Accessory:
     def __init__(self, config_section: str) -> None:
         """Initialize a new Accessory instance.
 
-        Sets up the base attributes for an accessory including the power GPIO
-        pin.
+        Sets up the base attributes for an accessory.
         """
-        self.power = sd.assert_out(
-            GPIOPin(int(sd.config[config_section]['power_pin']), None, initial=None)
-        )
+        gpio_chip, gpio_pin = sd.config[config_section]['power_pin'].split(' ')
+        self._power = sd.LineOut(f"/dev/gpiochip{gpio_chip}", int(gpio_pin))
+        self._power.value = gpiod.line.Value.ACTIVE
 
     def device_status(self, command: list[str]) -> str:
-        return f'{command[0]} power {sd.get_state(self.power)}\n'
+        """Get the power status of an accessory device."""
+        return self.component_status([command[0], 'power', *command[1:]])
 
     def component_status(self, command: list[str]) -> str:
-        try:
-            component = getattr(self, command[1].replace('-', '_'))
-        except AttributeError as error:
-            raise sd.InvalidCommandError from error
+        """Get the power status of an accessory device component."""
+        if command[1] != 'power':
+            raise sd.InvalidCommandError
 
-        return sd.get_status(component, command)
+        state = 'ON' if self._power.value == gpiod.line.Value.ACTIVE else 'OFF'
+        return f'{command[0]} {command[1]} {state}\n'
 
     def power_on(self) -> None:
-        if self.power.read() == sd.ON:
+        """Turn on the accessory."""
+        if self._power.value == gpiod.line.Value.ACTIVE:
             raise sd.NoChangeError
-        self.power.write(sd.ON)
+        self._power.value = gpiod.line.Value.ACTIVE
 
     def power_off(self) -> None:
-        if self.power.read() == sd.OFF:
+        """Turn off the accessory."""
+        if self._power.value == gpiod.line.Value.INACTIVE:
             raise sd.NoChangeError
-        self.power.write(sd.OFF)
+        self._power.value = gpiod.line.Value.INACTIVE
 
 
 class VUTxRelay(Accessory):
@@ -69,66 +72,3 @@ class VUTxRelay(Accessory):
     def power_off(self) -> None:
         self._ptt_check()
         super().power_off()
-
-
-class SatnogsHost(Accessory):
-    """SatNOGS host power control.
-
-    Controls power to the SatNOGS host which handles satellite tracking
-    and observation scheduling.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the SatNOGS Host accessory.
-
-        Sets up the SatNOGS host power control with its configured GPIO power
-        pin.
-        """
-        super().__init__('SATNOGS-HOST')
-
-
-class RadioHost(Accessory):
-    """Radio host power control.
-
-    Controls power to the radio host which manages radio communication and
-    digital signal processing.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the Radio Host accessory.
-
-        Sets up the radio host power control with its configured GPIO power pin.
-        """
-        super().__init__('RADIO-HOST')
-
-
-class Rotator(Accessory):
-    """Antenna rotator power control.
-
-    Controls power to the antenna rotator system which provides azimuth and
-    elevation positioning for directional antennas during satellite passes.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the Rotator accessory.
-
-        Sets up the antenna rotator power control with its configured GPIO power
-        pin.
-        """
-        super().__init__('ROTATOR')
-
-
-class SDRB200(Accessory):
-    """USRP B200 SDR power control.
-
-    Controls power to the USRP B200 Software Defined Radio which provides
-    RF reception and transmission capabilities for the ground station.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the SDR B200 accessory.
-
-        Sets up the USRP B200 SDR power control with its configured
-        GPIO power pin.
-        """
-        super().__init__('SDR-B200')

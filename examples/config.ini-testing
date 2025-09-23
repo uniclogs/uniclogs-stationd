@@ -3,34 +3,34 @@ udp_ip = 127.0.0.1
 udp_port = 5005
 
 [VHF]
-tr_relay_pin = 17
-rf_ptt_pin = 18
-pa_power_pin = 27
-lna_pin = 22
-polarization_pin = 23
+pa_power_pin = 4 13     ; pinout 33
+tr_relay_pin = 4 19     ; pinout 35
+rf_ptt_pin = 4 16       ; pinout 36
+lna_pin = 4 26          ; pinout 37
+polarization_pin = 4 20 ; pinout 38
 
 [UHF]
-tr_relay_pin = 12
-rf_ptt_pin = 13
-pa_power_pin = 19
-lna_pin = 16
-polarization_pin = 26
+pa_power_pin = 4 9      ; pinout 21
+tr_relay_pin = 4 25     ; pinout 22
+rf_ptt_pin = 4 11       ; pinout 23
+lna_pin = 4 8           ; pinout 24
+polarization_pin = 4 7  ; pinout 26
 
 [L-BAND]
-rf_ptt_pin = 24
-pa_power_pin = 25
+pa_power_pin = 4 24     ; pinout 18
+rf_ptt_pin = 4 10       ; pinout 19
 
 [VU-TX-RELAY]
-power_pin = 11
+power_pin = 4 17        ; pinout 11
 
 [SATNOGS-HOST]
-power_pin = 8
+power_pin = 4 18        ; pinout 12
 
 [RADIO-HOST]
-power_pin = 2
+power_pin =4 27         ; pinout 13
 
 [ROTATOR]
-power_pin = 6
+power_pin = 4 22        ; pinout 15
 
 [SDR-B200]
-power_pin = 3
+power_pin = 4 23        ; pinout 16

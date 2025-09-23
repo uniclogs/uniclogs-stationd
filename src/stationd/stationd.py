@@ -11,9 +11,10 @@ import socket
 import threading
 from pathlib import Path
 
+import gpiod
+
 from . import accessory as acc
 from . import amplifier as amp
-from .gpio.gpio import HIGH, LOW, OUT, GPIOPin
 
 # Module logger
 logger = logging.getLogger(__name__)
@@ -21,10 +22,6 @@ logger = logging.getLogger(__name__)
 # Config File
 config = configparser.ConfigParser()
 config.read('config.ini')
-
-# Constants
-ON = HIGH
-OFF = LOW
 
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
@@ -39,16 +36,16 @@ class MaxPTTError(Exception):
 
 
 class ActivePTT:
-    '''Thread safe counter for tracking simultaneous PTT activations.
+    """Thread safe counter for tracking simultaneous PTT activations.
 
     At most PTT_MAX_COUNT PTT lines can be active at one time and this information needs to be
     shared across all accessories and amplifiers.
-    '''
+    """
 
     PTT_MAX_COUNT = 1
 
     def __init__(self) -> None:
-        '''Create a PTT counter initialized to 0.'''
+        """Create a PTT counter initialized to 0."""
         self.count = 0
         self._lock = threading.Lock()
 
@@ -61,6 +58,30 @@ class ActivePTT:
     def dec(self) -> None:
         with self._lock:
             self.count = max(self.count - 1, 0)
+
+
+class LineOut:
+    """GPIO output line controller using gpiod.
+
+    A simple interface for controlling GPIO output lines using the libgpiod library. It wraps
+    the gpiod functionality to provide easy setting and getting of GPIO line values.
+    """
+
+    def __init__(self, chip: str, offset: int) -> None:
+        """Initialize a GPIO output line."""
+        self._line = gpiod.request_lines(
+            chip,
+            consumer="stationd",
+            config={offset: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)},
+        )
+
+    @property
+    def value(self) -> gpiod.line.Value:
+        return self._line.get_value(self._line.offsets[0])
+
+    @value.setter
+    def value(self, value: gpiod.line.Value) -> None:
+        self._line.set_value(self._line.offsets[0], value)
 
 
 class StationD:
@@ -88,10 +109,10 @@ class StationD:
         self.l_band = amp.LBand(self.active_ptt)
         # Accessories
         self.vu_tx_relay = acc.VUTxRelay(self.active_ptt)
-        self.satnogs_host = acc.SatnogsHost()
-        self.radio_host = acc.RadioHost()
-        self.rotator = acc.Rotator()
-        self.sdr_b200 = acc.SDRB200()
+        self.satnogs_host = acc.Accessory("SATNOGS-HOST")
+        self.radio_host = acc.Accessory("RADIO-HOST")
+        self.rotator = acc.Accessory("ROTATOR")
+        self.sdr_b200 = acc.Accessory("SDR-B200")
         # Temperature sensor
         self.pi_cpu = TEMP_PATH
         # Logger
@@ -188,30 +209,11 @@ def command_parser(device: 'acc.Accessory | amp.TxAmplifier', command: list[str]
     raise InvalidCommandError
 
 
-def get_state(gpiopin: GPIOPin) -> str:
-    """Get the current state of a given GPIO pin."""
-    if gpiopin.read() == ON:
-        return 'ON'
-    return 'OFF'
-
-
 def read_temp(path: Path) -> str:
     """Read temperature from a persistent file handle and send response."""
     with path.open('rb', buffering=0) as o:
         temp = float(o.read()) / 1000
     return f'temp: {temp!s}\n'
-
-
-def get_status(gpiopin: GPIOPin, command: list[str]) -> str:
-    """Get a formatted status string for a GPIO pin."""
-    return f'{command[0]} {command[1]} {get_state(gpiopin)}\n'
-
-
-def assert_out(gpiopin: GPIOPin) -> GPIOPin:
-    """Ensure a GPIO pin is configured as an output pin."""
-    if gpiopin.get_direction() != OUT:
-        gpiopin.set_direction(OUT)
-    return gpiopin
 
 
 # Exceptions -------------------------------------------------------------------
