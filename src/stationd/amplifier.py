@@ -148,11 +148,10 @@ class RxTxAmplifier(TxAmplifier):
 
         polarization_chip, polarization_pin = sd.config[section]['polarization_pin'].split(' ')
         self.polarization = sd.LineOut(f"/dev/gpiochip{polarization_chip}", int(polarization_pin))
-        self.polarization.value = gpiod.line.Value.INACTIVE
+        self.polarization.value = RIGHT
 
     def device_status(self, command: list[str]) -> str:
-        polarization_state = 'ON' if self.polarization.value == gpiod.line.Value.ACTIVE else 'OFF'
-        p_state = "LEFT" if polarization_state == "ON" else "RIGHT"
+        p_state = "LEFT" if self.polarization.value == LEFT else "RIGHT"
         tr_relay_state = 'ON' if self.tr_relay.value == gpiod.line.Value.ACTIVE else 'OFF'
         lna_state = 'ON' if self.lna.value == gpiod.line.Value.ACTIVE else 'OFF'
 
@@ -164,10 +163,7 @@ class RxTxAmplifier(TxAmplifier):
 
     def component_status(self, command: list[str]) -> str:
         if command[1] == "polarization":
-            polarization_state = (
-                'ON' if self.polarization.value == gpiod.line.Value.ACTIVE else 'OFF'
-            )
-            p_state = "LEFT" if polarization_state == "ON" else "RIGHT"
+            p_state = "LEFT" if self.polarization.value == LEFT else "RIGHT"
             return f'{command[0]} {command[1]} {p_state}\n'
 
         component_name = command[1].replace('-', '_')
@@ -226,22 +222,22 @@ class RxTxAmplifier(TxAmplifier):
         self.lna.value = gpiod.line.Value.INACTIVE
 
     def polarization_left(self) -> None:
-        if self.polarization.value == gpiod.line.Value.ACTIVE:
+        if self.polarization.value == LEFT:
             raise sd.NoChangeError
         if self.rf_ptt.value == gpiod.line.Value.ACTIVE:
             raise sd.PTTConflictError
         # brief cooldown
         time.sleep(SLEEP_TIMER)
-        self.polarization.value = gpiod.line.Value.ACTIVE
+        self.polarization.value = LEFT
 
     def polarization_right(self) -> None:
-        if self.polarization.value == gpiod.line.Value.INACTIVE:
+        if self.polarization.value == RIGHT:
             raise sd.NoChangeError
         if self.rf_ptt.value == gpiod.line.Value.ACTIVE:
             raise sd.PTTConflictError
         # brief cooldown
         time.sleep(SLEEP_TIMER)
-        self.polarization.value = gpiod.line.Value.INACTIVE
+        self.polarization.value = RIGHT
 
 
 class VHF(RxTxAmplifier):
