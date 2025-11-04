@@ -103,3 +103,19 @@ pytest
 A coverage report will be generated in the root of this project under
 `htmlcov/` when tests are run. View the report by opening `htmlcov/index.html`
 in a browser.
+
+## Packaging
+
+### Locally
+
+1.  Upgrade to latest version of build: `python3 -m pip install --upgrade build`
+2.  Install or upgrade to latest version of twine: `python3 -m pip install --upgrade twine`
+3.  Ensure the version of this project is correct and up-to-date in `pyproject.toml`
+4.  Build the package: `python3 -m build`
+5.  Push the package to PyPi repository: `python3 -m twine upload dist/*`
+
+### Github
+
+1.  Merge work to main
+2.  Cut a release (semver) pointing at main (0.0.1)
+3.  Add release notes

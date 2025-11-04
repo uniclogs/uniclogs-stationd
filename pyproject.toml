@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "uniclogs-stationd"
-description = "A power management Daemon for Uniclogs."
+version = "0.0.1"
+description = "A power management Daemon for UniClOGS."
 requires-python = ">=3.11"
 license = {text = "GPL-3.0"}
-dynamic = ["version"]
 readme = "README.md"
 authors = [
-    { name = "Steven Borrego" }
+    { name = "Steven Borrego" },
+    { name = "Bryan Borgeson" }
 ]
 
 dependencies = [
@@ -25,7 +26,7 @@ dev = [
     "sphinx",
     "mypy>=1.17.0",
     "pytest>=8.4.0",
-    "pytest-cov>=6.2.0",
+    "pytest-cov>=7.0.0",
     "ruff>=0.12.5",
 ]
 
