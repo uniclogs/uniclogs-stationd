@@ -104,18 +104,33 @@ A coverage report will be generated in the root of this project under
 `htmlcov/` when tests are run. View the report by opening `htmlcov/index.html`
 in a browser.
 
-## Packaging
+## Release Process
 
-### Locally
+### Manual
 
-1.  Upgrade to latest version of build: `python3 -m pip install --upgrade build`
-2.  Install or upgrade to latest version of twine: `python3 -m pip install --upgrade twine`
-3.  Ensure the version of this project is correct and up-to-date in `pyproject.toml`
-4.  Build the package: `python3 -m build`
-5.  Push the package to PyPi repository: `python3 -m twine upload dist/*`
-
-### Github
-
-1.  Merge work to main
-2.  Cut a release (semver) pointing at main (0.0.1)
-3.  Add release notes
+1.  Pre-release Checks
+    1.  Ensure all tests are passing
+    2.  Verify the `main` git branch is up to date
+    3.  Review changes since the last release (git tag)
+        1.  Choose a version number to bump to (Use SemVer `<major.minor.patch>`)
+2.  Version Update
+    1.  Update the `CHANGELOG.md` file with latest changes (May delete this if we don't want to use changelogs)
+    2.  Bump version number in `pyproject.toml` to the version number chosen in Pre-release Checks steps
+    3.  Commit these changes on the `main` branch. (`git commit -m "Bump version to X.Y.Z"`)
+3.  Tag Release
+    1.  Tag the release: `git tag -a vX.Y.Z -m "Release version X.Y.Z"`
+    2.  Push version updates and tags: `git push main && git push --tags`
+4.  Build Distribution
+    1.  Upgrade to latest version of build: `python3 -m pip install --upgrade build`
+    2.  Install or upgrade to latest version of twine: `python3 -m pip install --upgrade twine`
+    3.  Build the package: `python3 -m build`
+5.  Upload to Pypi
+    1.  Push the package to PyPi repository: `python3 -m twine upload dist/*`
+6.  Create Release in Github
+    1.  Go to your GitHub repo's "Releases" page
+    2.  Click "Draft a new release"
+    3.  Select the tag you just pushed
+    4.  Add release notes (can copy from CHANGELOG.md)
+    5.  Publish the release
+7.  Smoke-test
+    1.  Test the package installation after uploading: `pip install your-package==X.Y.Z`
