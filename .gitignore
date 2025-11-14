@@ -5,3 +5,4 @@ dist/
 .coverage
 activity.log
 config.ini
+*/_version.py

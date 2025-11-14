@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools>=75", "setuptools-scm>=8"]
+requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "uniclogs-stationd"
-version = "0.0.1"
 description = "A power management Daemon for UniClOGS."
 requires-python = ">=3.11"
 license = {text = "GPL-3.0"}
@@ -13,21 +12,26 @@ authors = [
     { name = "Steven Borrego" },
     { name = "Bryan Borgeson" }
 ]
-
 dependencies = [
     "gpiod>=2.3.0"
 ]
+dynamic = ["version"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/stationd/_version.py"
 
 [project.optional-dependencies]
 dev = [
     "sphinx",
     "mypy>=1.17.0",
-    "pytest>=8.4.0",
+    "pytest>=9.0.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.12.5",
+    "setuptools>=80",
+    "setuptools-scm>=9",
 ]
 
 [tool.mypy]
@@ -44,6 +48,9 @@ addopts = [
 source = ["."]
 
 [tool.ruff]
+exclude = [
+    "src/stationd/_version.py"
+]
 line-length = 100
 
 [tool.ruff.format]
@@ -87,7 +94,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Test specific lint ignores.
+# Test-specific lint ignores.
 "tests/**/test_*.py" = [
     "S101",      # assert - pytest prefers plain assert
     "PLC0415",   # import - pytests need flexibility around when to import
