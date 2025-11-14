@@ -106,7 +106,10 @@ in a browser.
 
 ## Release Process
 
-### Manual
+Releases are managed through an automated workflow using Github Actions. The
+automation is triggered when a release is published on Github.
+
+<!-- ### Manual
 
 1.  Pre-release Checks
     1.  Ensure all tests are passing
@@ -114,9 +117,8 @@ in a browser.
     3.  Review changes since the last release (git tag)
         1.  Choose a version number to bump to (Use SemVer `<major.minor.patch>`)
 2.  Version Update
-    1.  Update the `CHANGELOG.md` file with latest changes (May delete this if we don't want to use changelogs)
-    2.  Bump version number in `pyproject.toml` to the version number chosen in Pre-release Checks steps
-    3.  Commit these changes on the `main` branch. (`git commit -m "Bump version to X.Y.Z"`)
+    1.  Bump version number in `pyproject.toml` to the version number chosen in Pre-release Checks steps
+    2.  Commit these changes on the `main` branch. (`git commit -m "Bump version to X.Y.Z"`)
 3.  Tag Release
     1.  Tag the release: `git tag -a vX.Y.Z -m "Release version X.Y.Z"`
     2.  Push version updates and tags: `git push main && git push --tags`
@@ -133,4 +135,4 @@ in a browser.
     4.  Add release notes (can copy from CHANGELOG.md)
     5.  Publish the release
 7.  Smoke-test
-    1.  Test the package installation after uploading: `pip install your-package==X.Y.Z`
+    1.  Test the package installation after uploading: `pip install your-package==X.Y.Z` -->

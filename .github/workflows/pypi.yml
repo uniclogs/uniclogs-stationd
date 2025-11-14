@@ -1,0 +1,33 @@
+name: Upload Python Package
+
+on:
+  # FIXME: Testing only. remove this and uncomment release/types "published"
+  pull_request:
+    branches: [ "main" ]
+  # release:
+  #   types: [ "published" ]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: "pip"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Build package
+      run: python -m build
+
+      # TODO: Configure release to PyPi after successful build
+      #       Depends on pypi key
