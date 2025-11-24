@@ -109,30 +109,25 @@ in a browser.
 Releases are managed through an automated workflow using Github Actions. The
 automation is triggered when a release is published on Github.
 
-<!-- ### Manual
+### Creating a Release
 
-1.  Pre-release Checks
-    1.  Ensure all tests are passing
-    2.  Verify the `main` git branch is up to date
-    3.  Review changes since the last release (git tag)
-        1.  Choose a version number to bump to (Use SemVer `<major.minor.patch>`)
-2.  Version Update
-    1.  Bump version number in `pyproject.toml` to the version number chosen in Pre-release Checks steps
-    2.  Commit these changes on the `main` branch. (`git commit -m "Bump version to X.Y.Z"`)
-3.  Tag Release
-    1.  Tag the release: `git tag -a vX.Y.Z -m "Release version X.Y.Z"`
-    2.  Push version updates and tags: `git push main && git push --tags`
-4.  Build Distribution
-    1.  Upgrade to latest version of build: `python3 -m pip install --upgrade build`
-    2.  Install or upgrade to latest version of twine: `python3 -m pip install --upgrade twine`
-    3.  Build the package: `python3 -m build`
-5.  Upload to Pypi
-    1.  Push the package to PyPi repository: `python3 -m twine upload dist/*`
-6.  Create Release in Github
-    1.  Go to your GitHub repo's "Releases" page
-    2.  Click "Draft a new release"
-    3.  Select the tag you just pushed
-    4.  Add release notes (can copy from CHANGELOG.md)
-    5.  Publish the release
-7.  Smoke-test
-    1.  Test the package installation after uploading: `pip install your-package==X.Y.Z` -->
+1.  Navigate to this project's "Releases" page
+2.  Click "Draft a new release"
+3.  Click "Tag: Select tag" and click on the "Create new tag" button
+4.  Add a tag following the [SemVer](https://semver.org/) standard
+    -   e.g. `v1.2.3`
+5.  Ensure that Target button is pointing at the `main` branch
+6.  Add all necessary details about the release under "Release notes"
+7.  Once everything looks good, click the "Publish release" button
+
+Step 7 will trigger the `pypi.yml` workflow and the new release will be
+available on pypi.org.
+
+### Post-Release
+
+Once a new release has been created and is available on pypi.org, smoke test
+the release to ensure it runs as expected.
+
+```sh
+pip install your-package==X.Y.Z
+```

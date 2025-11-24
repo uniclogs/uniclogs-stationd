@@ -1,11 +1,8 @@
 name: Upload Python Package
 
 on:
-  # FIXME: Testing only. remove this and uncomment release/types "published"
-  pull_request:
-    branches: [ "main" ]
-  # release:
-  #   types: [ "published" ]
+  release:
+    types: [ "published" ]
 
 permissions:
   contents: read
