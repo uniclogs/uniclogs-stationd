@@ -28,6 +28,3 @@ jobs:
 
     - name: Build package
       run: python -m build
-
-      # TODO: Configure release to PyPi after successful build
-      #       Depends on pypi key

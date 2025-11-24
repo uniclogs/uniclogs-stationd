@@ -3,6 +3,6 @@ build/
 dist/
 *.egg-info/
 .coverage
+_version.py
 activity.log
 config.ini
-*/_version.py
