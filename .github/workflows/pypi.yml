@@ -25,3 +25,22 @@ jobs:
 
     - name: Build package
       run: python -m build
+
+    - name: Mint an API token
+      id: mint-token
+      run: |
+        resp=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=pypi")
+        oidc_token=$(jq -r '.value' <<< "${resp}")
+
+        resp=$(curl -X POST https://pypi.org/_/oidc/mint-token -d "{\"token\": \"${oidc_token}\"}")
+        api_token=$(jq -r '.token' <<< "${resp}")
+
+        echo "::add-mask::${api_token}"
+
+        echo "api-token=${api_token}" >> "${GITHUB_OUTPUT}"
+
+    - name: Publish
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ steps.mint-token.outputs.api-token }}
