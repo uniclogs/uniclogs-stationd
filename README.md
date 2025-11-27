@@ -103,3 +103,31 @@ pytest
 A coverage report will be generated in the root of this project under
 `htmlcov/` when tests are run. View the report by opening `htmlcov/index.html`
 in a browser.
+
+## Release Process
+
+Releases are managed through an automated workflow using Github Actions. The
+automation is triggered when a release is published on Github.
+
+### Creating a Release
+
+1.  Navigate to this project's "Releases" page
+2.  Click "Draft a new release"
+3.  Click "Tag: Select tag" and click on the "Create new tag" button
+4.  Add a tag following the [SemVer](https://semver.org/) standard
+    -   e.g. `v1.2.3`
+5.  Ensure that Target button is pointing at the `main` branch
+6.  Add all necessary details about the release under "Release notes"
+7.  Once everything looks good, click the "Publish release" button
+
+Step 7 will trigger the `pypi.yml` workflow and the new release will be
+available on pypi.org.
+
+### Post-Release
+
+Once a new release has been created and is available on pypi.org, smoke test
+the release to ensure it runs as expected.
+
+```sh
+pip install your-package==X.Y.Z
+```
