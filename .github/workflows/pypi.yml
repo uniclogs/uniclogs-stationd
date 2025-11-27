@@ -4,13 +4,12 @@ on:
   release:
     types: [ "published" ]
 
-permissions:
-  contents: read
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: pypi
+    permissions:
+      id-token: write
 
     steps:
     - uses: actions/checkout@v4
@@ -25,3 +24,6 @@ jobs:
 
     - name: Build package
       run: python -m build
+
+    - name: Publish
+      uses: pypa/gh-action-pypi-publish@release/v1
