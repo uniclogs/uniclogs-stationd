@@ -1,5 +1,3 @@
-import gpiod
-
 from . import stationd as sd
 
 
@@ -18,7 +16,7 @@ class Accessory:
         """
         gpio_chip, gpio_pin = sd.config[config_section]['power_pin'].split(' ')
         self._power = sd.LineOut(f"/dev/gpiochip{gpio_chip}", int(gpio_pin))
-        self._power.value = gpiod.line.Value.ACTIVE
+        self._power.value = sd.gpiod.line.Value.ACTIVE
 
     def device_status(self, command: list[str]) -> str:
         """Get the power status of an accessory device."""
@@ -29,20 +27,20 @@ class Accessory:
         if command[1] != 'power':
             raise sd.InvalidCommandError
 
-        state = 'ON' if self._power.value == gpiod.line.Value.ACTIVE else 'OFF'
+        state = 'ON' if self._power.value == sd.gpiod.line.Value.ACTIVE else 'OFF'
         return f'{command[0]} {command[1]} {state}\n'
 
     def power_on(self) -> None:
         """Turn on the accessory."""
-        if self._power.value == gpiod.line.Value.ACTIVE:
+        if self._power.value == sd.gpiod.line.Value.ACTIVE:
             raise sd.NoChangeError
-        self._power.value = gpiod.line.Value.ACTIVE
+        self._power.value = sd.gpiod.line.Value.ACTIVE
 
     def power_off(self) -> None:
         """Turn off the accessory."""
-        if self._power.value == gpiod.line.Value.INACTIVE:
+        if self._power.value == sd.gpiod.line.Value.INACTIVE:
             raise sd.NoChangeError
-        self._power.value = gpiod.line.Value.INACTIVE
+        self._power.value = sd.gpiod.line.Value.INACTIVE
 
 
 class VUTxRelay(Accessory):
