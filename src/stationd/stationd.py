@@ -19,12 +19,18 @@ from . import amplifier as amp
 # Module logger
 logger = logging.getLogger(__name__)
 
-# Config File
-config = configparser.ConfigParser()
-config.read('config.ini')
-
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
+
+# Config File
+DEFAULT_CONFIG_PATH = 'stationd.ini'
+config = configparser.ConfigParser()
+
+
+def load_config(path: str = DEFAULT_CONFIG_PATH) -> str:
+    """Load configuration from the provided path."""
+    config.read(path)
+    return path
 
 
 class MaxPTTError(Exception):
