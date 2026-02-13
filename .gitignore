@@ -5,4 +5,4 @@ dist/
 .coverage
 _version.py
 activity.log
-config.ini
+stationd.ini

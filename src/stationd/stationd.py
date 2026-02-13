@@ -5,6 +5,7 @@ system, handling UDP commands for controlling RF amplifiers, accessories,
 and other hardware components.
 """
 
+import argparse
 import configparser
 import logging
 import socket
@@ -19,12 +20,42 @@ from . import amplifier as amp
 # Module logger
 logger = logging.getLogger(__name__)
 
-# Config File
-config = configparser.ConfigParser()
-config.read('config.ini')
-
 # UniClOGS UPB sensor
 TEMP_PATH = Path('/sys/bus/i2c/drivers/adt7410/1-004a/hwmon/hwmon2/temp1_input')
+
+# Config File
+DEFAULT_CONFIG_PATH = Path('./stationd.ini')
+config = configparser.ConfigParser()
+
+
+def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Path:
+    """Load configuration from provided path."""
+    if not path.exists():
+        raise FileNotFoundError(f'Config file not found: {path}')
+
+    config.read(path)
+    return path
+
+
+def main() -> None:
+    """Parse CLI args, load config, and start the daemon."""
+    parser = argparse.ArgumentParser(description='Station daemon controller.')
+    parser.add_argument(
+        '--config',
+        default=DEFAULT_CONFIG_PATH,
+        type=Path,
+        help='Path to stationd.ini',
+    )
+    args = parser.parse_args()
+
+    load_config(args.config)
+
+    print('===============================')  # noqa: T201
+    print('Station Daemon Power Management')  # noqa: T201
+    print('===============================')  # noqa: T201
+
+    sd = StationD()
+    sd.command_listener()
 
 
 class MaxPTTError(Exception):

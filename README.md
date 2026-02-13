@@ -34,7 +34,7 @@ These instructions assume you have Podman installed and configured.
     pip install -e .
     ```
 
-2.  Modify the config.ini file at the root of the project to suite your needs.
+2.  Modify the stationd.ini file at the root of the project to suite your needs.
 
 3.  Run the daemon:
 
