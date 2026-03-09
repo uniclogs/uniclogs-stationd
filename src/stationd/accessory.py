@@ -1,3 +1,8 @@
+'''Accessories are things that can be enabled and disabled via a GPIO.
+
+Examples include relays, the radio host, SDR, and the rotator contorller.
+'''
+
 import gpiod
 
 from . import stationd as sd

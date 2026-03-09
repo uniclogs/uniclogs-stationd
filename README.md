@@ -23,7 +23,7 @@ These instructions assume you have Podman installed and configured.
 3.  Install dependencies (inside the container):
 
     ```sh
-    pip install -e .[dev]
+    pip install -e . --group dev
     ```
 
 ### For Raspberry Pi (Hardware)
