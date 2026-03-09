@@ -12,27 +12,25 @@ authors = [
     { name = "Steven Borrego" },
     { name = "Bryan Borgeson" }
 ]
+dynamic = ["version"]
 dependencies = [
     "gpiod>=2.3.0"
 ]
-dynamic = ["version"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools_scm]
-write_to = "src/stationd/_version.py"
-
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "sphinx",
     "mypy>=1.17.0",
     "pytest>=9.0.0",
     "pytest-cov>=7.0.0",
     "ruff>=0.12.5",
-    "setuptools>=80",
-    "setuptools-scm>=9",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/stationd/_version.py"
 
 [tool.mypy]
 ignore_missing_imports = true
@@ -65,8 +63,6 @@ ignore = [
     "D300",    # triple-single-quotes
     "COM812",  # prohibited-trailing-comma
     "ISC001",  # single-line-implicit-string-concatenation
-    "D100",    # undocumented-public-module
-    "D101",    # undocumented-public-class
     "D102",    # undocumented-public-method
     # might leave off always. Does the user need to know __str__ makes a str?
     "D105",    # undocumented-magic-method
@@ -98,4 +94,13 @@ ignore = [
 "tests/**/test_*.py" = [
     "S101",      # assert - pytest prefers plain assert
     "PLC0415",   # import - pytests need flexibility around when to import
+    # The test modules are pretty self-describing, no need to enforce docstrings for them.
+    "D100",      # modules
+    "D101",      # classes
+    "D102",      # methods
+    "D103",      # functions
+    "D104",      # package
+    "D105",      # magic methods
+    "D106",      # nested classes
+    "D107",      # __init__
 ]

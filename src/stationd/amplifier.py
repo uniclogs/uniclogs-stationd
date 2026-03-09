@@ -1,3 +1,10 @@
+'''Amplifiers are the high powered radio amplifiers with push-to-talk.
+
+There is typically one amplifier or an RX/TX pair per RF band. Care must be
+taken not to overheat or activate them in the wrong order as they can be
+physically damaged.
+'''
+
 import time
 
 import gpiod
